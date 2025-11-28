@@ -66,10 +66,9 @@ export const TableColumns = observer(
       onLog(`Loading columns for table: ${table}`, "info");
 
       if (selectedTable && selectedTable.fields?.length === 0) {
-        getFieldsMeta(); // Logic to load columns can be added here
+        getFieldsMeta();
       }
-      // Logic to load columns can be added here
-    }, [selectedTable]);
+    }, [selectedTable, table]);
 
     return (
       <>

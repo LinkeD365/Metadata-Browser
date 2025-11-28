@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useConnection,
   useEventLog,
@@ -43,11 +43,15 @@ function App() {
   }, [addLog]);
 
   const [viewModel] = useState(() => new ViewModel());
-  const dvSvc = new dvService({
-    connection: connection,
-    dvApi: window.dataverseAPI,
-    onLog: addLog,
-  });
+  const dvSvc = useMemo(
+    () =>
+      new dvService({
+        connection: connection,
+        dvApi: window.dataverseAPI,
+        onLog: addLog,
+      }),
+    [connection, addLog]
+  );
   return (
     <>
       <MetadataBrowser
