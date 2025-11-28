@@ -13,9 +13,13 @@
     "build": "tsc && vite build",
     "dev": "vite",
     "preview": "vite preview",
+    "watch": "vite build --watch",
     "finalize-package": "npm shrinkwrap"
   },
   "dependencies": {
+    "@fluentui/react-components": "^9.72.7",
+    "mobx": "^6.15.0",
+    "mobx-react": "^9.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

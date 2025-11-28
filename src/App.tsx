@@ -1,60 +1,68 @@
-import { useCallback, useEffect } from "react";
-import { ConnectionStatus } from "./components/ConnectionStatus";
-import { DataverseAPIDemo } from "./components/DataverseAPIDemo";
-import { EventLog } from "./components/EventLog";
-import { ToolboxAPIDemo } from "./components/ToolboxAPIDemo";
-import { useConnection, useEventLog, useToolboxEvents } from "./hooks/useToolboxAPI";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useConnection,
+  useEventLog,
+  useToolboxEvents,
+} from "./hooks/useToolboxAPI";
+import { ViewModel } from "./model/ViewModel";
+import { dvService } from "./utils/dataverse";
+import { MetadataBrowser } from "./components/MetadataBrowser";
 
 function App() {
-    const { connection, isLoading, refreshConnection } = useConnection();
-    const { logs, addLog, clearLogs  } = useEventLog();
+  const { connection, isLoading, refreshConnection } = useConnection();
+  const {  addLog  } = useEventLog();
 
-    // Handle platform events
-    const handleEvent = useCallback(
-        (event: string, _data: any) => {
-            switch (event) {
-                case 'connection:updated':
-                case 'connection:created':
-                    refreshConnection();
-                    break;
+  // Handle platform events
+  const handleEvent = useCallback(
+    (event: string, _data: any) => {
+      switch (event) {
+        case "connection:updated":
+        case "connection:created":
+          refreshConnection();
+          break;
 
-                case 'connection:deleted':
-                    refreshConnection();
-                    break;
+        case "connection:deleted":
+          refreshConnection();
+          break;
 
-                case 'terminal:output':
-                case 'terminal:command:completed':
-                case 'terminal:error':
-                    // Terminal events handled by dedicated components
-                    break;
-            }
-        },
-        [refreshConnection]
-    );
+        case "terminal:output":
+        case "terminal:command:completed":
+        case "terminal:error":
+          // Terminal events handled by dedicated components
+          break;
+      }
+    },
+    [refreshConnection]
+  );
 
-    useToolboxEvents(handleEvent);
+  useToolboxEvents(handleEvent);
 
-    // Add initial log (run only once on mount)
-    useEffect(() => {
-        addLog('React Sample Tool initialized', 'success');
-    }, [addLog]);
+  // Add initial log (run only once on mount)
+  useEffect(() => {
+    addLog("Metadata browser loaded", "success");
+  }, [addLog]);
 
-    return (
-        <>
-            <header className="header">
-                <h1>⚛️ React Sample Tool</h1>
-                <p className="subtitle">A complete example of building Power Platform Tool Box tools with React & TypeScript</p>
-            </header>
-
-            <ConnectionStatus connection={connection} isLoading={isLoading} />
- 
-            <ToolboxAPIDemo onLog={addLog} />
-
-            <DataverseAPIDemo connection={connection} onLog={addLog} />
-
-            <EventLog logs={logs} onClear={clearLogs} />
-        </>
-    );
+  const [viewModel] = useState(() => new ViewModel());
+  const dvSvc = useMemo(
+    () =>
+      new dvService({
+        connection: connection,
+        dvApi: window.dataverseAPI,
+        onLog: addLog,
+      }),
+    [connection, addLog]
+  );
+  return (
+    <>
+      <MetadataBrowser
+        connection={connection}
+        viewModel={viewModel}
+        dvService={dvSvc}
+        onLog={addLog}
+        isLoading={isLoading}
+      />
+    </>
+  );
 }
 
 export default App;
