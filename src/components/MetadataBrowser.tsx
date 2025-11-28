@@ -100,7 +100,7 @@ export const MetadataBrowser = observer(
         },
       }),
       createTableColumn<TableMeta>({
-        columnId: "name",
+        columnId: "logical",
         compare: (a, b) => {
           return a.tableName.localeCompare(b.tableName);
         },
