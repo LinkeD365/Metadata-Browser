@@ -3,12 +3,14 @@ import { makeAutoObservable } from "mobx";
 export class FieldMeta {
   fieldName: string;
   displayName: string;
+  dataType: string;
 
   attributes: FieldAttribute[] = [];
-  
+
   constructor() {
     this.fieldName = "";
     this.displayName = "";
+    this.dataType = "";
     makeAutoObservable(this);
   }
 }
