@@ -6,6 +6,7 @@ export class ViewModel {
 
   tableMetadata: TableMeta[] = [];
   selectedTables: TableMeta[] = [];
+  fieldColummns: string[] = [];
   
   constructor() {
     this.orgId = "";
