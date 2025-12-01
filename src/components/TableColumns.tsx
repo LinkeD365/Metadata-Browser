@@ -67,8 +67,9 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
       getFieldsMeta();
     }
   }, [selectedTable, table]);
+
   function createColumnsFromFieldColumns(): TableColumnDefinition<FieldMeta>[] {
-    return viewModel.fieldColummns.map((col) =>
+    return viewModel.fieldColummns.filter(col => col).map((col) =>
       createTableColumn<FieldMeta>({
         columnId: col,
         compare: (a, b) => {
@@ -86,7 +87,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     );
   }
 
-  const columns: TableColumnDefinition<FieldMeta>[] = [
+  const fieldColumns: TableColumnDefinition<FieldMeta>[] = [
     createTableColumn<FieldMeta>({
       columnId: "name",
       compare: (a, b) => {
@@ -125,44 +126,6 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     }),
     ...createColumnsFromFieldColumns(),
   ];
-  //   const columns: TableColumnDefinition<FieldMeta>[] = [
-  //     createTableColumn<FieldMeta>({
-  //       columnId: "name",
-  //       compare: (a, b) => {
-  //         return a.displayName.localeCompare(b.displayName);
-  //       },
-  //       renderHeaderCell: () => {
-  //         return "Field";
-  //       },
-  //       renderCell: (item) => {
-  //         return <div style={{ verticalAlign: "top" }}>{item.displayName}</div>;
-  //       },
-  //     }),
-  //     createTableColumn<FieldMeta>({
-  //       columnId: "logical",
-  //       compare: (a, b) => {
-  //         return a.fieldName.localeCompare(b.fieldName);
-  //       },
-  //       renderHeaderCell: () => {
-  //         return "Logical";
-  //       },
-  //       renderCell: (item) => {
-  //         return <div style={{ verticalAlign: "top" }}>{item.fieldName}</div>;
-  //       },
-  //     }),
-  //     createTableColumn<FieldMeta>({
-  //       columnId: "type",
-  //       compare: (a, b) => {
-  //         return a.dataType.localeCompare(b.dataType);
-  //       },
-  //       renderHeaderCell: () => {
-  //         return "Type";
-  //       },
-  //       renderCell: (item) => {
-  //         return <div style={{ verticalAlign: "top" }}>{item.dataType}</div>;
-  //       },
-  //     }),
-  //   ];
 
   return (
     <>
@@ -170,8 +133,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         "Loading..."
       ) : (
         <>
-          {table} {selectedTable.fields.length}
-          <DataGrid columns={columns} items={selectedTable.fields} sortable>
+          <DataGrid columns={fieldColumns} items={selectedTable.fields} sortable>
             <DataGridHeader
               style={{
                 position: "sticky",

@@ -17,18 +17,38 @@ export class dvService {
     this.onLog = props.onLog;
   }
 
+  /// Get metadata for all tables
+  /// @returns Promise<TableMeta[]> - A promise that resolves to an array of TableMeta
+  /// @todo : Need to swap back to toolbox code when fixed
   async getAllTables(): Promise<TableMeta[]> {
     this.onLog("Fetching table metadata...", "info");
     if (!this.connection || !this.connection.isActive) {
       throw new Error("No connection available");
     }
-    const tables = await this.dvApi.getAllEntitiesMetadata();
-
-    const tableMetaList: TableMeta[] = tables.value.map((table) => {
-      console.log("Table fetched: ", table);
+    //const tables = await this.dvApi.getAllEntitiesMetadata();
+    const tables = await this.dvApi.queryData("EntityDefinitions");
+    //console.log("Tables fetched: ", tables.value);
+    const tableMetaList: TableMeta[] = (tables.value as any[]).map((table: any) => {
+      //console.log("Table fetched: ", table);
       const tableMeta = new TableMeta();
-      tableMeta.tableName = table.LogicalName;
+      tableMeta.tableName = String(table.LogicalName);
       tableMeta.displayName = table.DisplayName?.LocalizedLabels?.[0]?.Label || table.LogicalName;
+      tableMeta.attributes = [];
+      Object.keys(table).forEach((prop) => {
+        const value = table[prop];
+        if (typeof value === "function") return;
+        try {
+          tableMeta.attributes.push({
+            attributeName: prop,
+            attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+          });
+        } catch {
+          tableMeta.attributes.push({
+            attributeName: prop,
+            attributeValue: String(value),
+          });
+        }
+      });
       return tableMeta;
     });
     return tableMetaList;
@@ -50,7 +70,7 @@ export class dvService {
       console.log("Attributes fetched: ", meta.value);
 
       const fieldMetaList: FieldMeta[] = (meta.value as any[]).map((attr: any) => {
-        console.log("Attribute fetched: ", attr);
+        //   console.log("Attribute fetched: ", attr);
         const fieldMeta = new FieldMeta();
         fieldMeta.fieldName = attr.LogicalName;
         fieldMeta.displayName = attr.DisplayName?.LocalizedLabels?.[0]?.Label || attr.LogicalName;
@@ -71,7 +91,7 @@ export class dvService {
             });
           }
         });
-        console.log("FieldMeta created: ", fieldMeta);
+        //console.log("FieldMeta created: ", fieldMeta);
         return fieldMeta;
       });
       return fieldMetaList;
