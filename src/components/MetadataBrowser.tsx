@@ -14,17 +14,28 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerHeaderTitle,
+  InputOnChangeData,
   List,
   ListItem,
   makeStyles,
+  Menu,
+  MenuButtonProps,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   OverlayDrawer,
+  SearchBox,
+  SearchBoxChangeEvent,
   SelectionItemId,
   SelectTabData,
   SelectTabEvent,
+  SplitButton,
   Tab,
   TableColumnDefinition,
   TabList,
   TabValue,
+  ToggleButton,
   tokens,
 } from "@fluentui/react-components";
 
@@ -32,7 +43,7 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
-import { ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
+import { ColumnEditRegular, Dismiss24Regular, EditRegular, LockClosedRegular } from "@fluentui/react-icons";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -50,7 +61,22 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const { connection, dvService, onLog, viewModel } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
   const [isTableColumnEditOpen, setIsTableColumnEditOpen] = React.useState(false);
+  const [isSolutionSelOpen, setIsSolutionSelOpen] = React.useState(false);
   const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(viewModel.tableColumns);
+  const [selectedValue, setSelectedValue] = React.useState<TabValue>("tables");
+  const [managed, setManaged] = React.useState<boolean>(false);
+  const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
+  const [tableQuery, setTableQuery] = React.useState<string>("");
+  const filterdTableMetadata: TableMeta[] = React.useMemo(() => {
+    if (!tableQuery || tableQuery.trim() === "") {
+      return viewModel.tableMetadata;
+    } else
+      return viewModel.tableMetadata.filter(
+        (t) =>
+          t.displayName.toLowerCase().includes(tableQuery.toLowerCase()) ||
+          t.tableName.toLowerCase().includes(tableQuery.toLowerCase())
+      );
+  }, [tableQuery, viewModel.tableMetadata]);
   const styles = useStyles();
 
   const showNotification = useCallback(
@@ -65,29 +91,54 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   );
 
   React.useEffect(() => {
-    onLog("Loading tables...", "info");
-
-    if (connection) {
-      getTableMeta();
+    if (isSolutionSelOpen) {
+      dvService
+        .getSolutions(managed)
+        .then((solutions) => {
+          viewModel.solutions = solutions;
+          onLog(`Loaded ${solutions.length} solutions from ${connection?.name}`, "success");
+        })
+        .catch((error: { message: any }) => {
+          onLog(`Error loading solutions: ${error.message}`, "error");
+        });
     }
-  }, [connection]);
+  }, [isSolutionSelOpen, managed]);
 
+  async function getAllTableMeta() {
+    viewModel.selectedSolution = undefined;
+    getTableMeta();
+  }
   async function getTableMeta() {
     setLoadingMeta(true);
-    await dvService
-      .getAllTables()
-      .then((tables) => {
-        viewModel.tableMetadata = tables;
-        onLog(`Loaded ${tables.length} tables from ${connection?.name}`, "success");
-      })
-      .catch((error: { message: any }) => {
-        onLog(`Error loading tables: ${error.message}`, "error");
-      })
-      .finally(() => {
-        setLoadingMeta(false);
-      });
+    if (viewModel.selectedSolution) {
+      await dvService
+        .getSolutionTables(viewModel.selectedSolution.uniqueName)
+        .then((tables) => {
+          viewModel.tableMetadata = tables;
+          console.log(tables);
+          onLog(`Loaded ${tables.length} tables from solution: ${viewModel.selectedSolution?.solutionName}`, "success");
+        })
+        .catch((error: { message: any }) => {
+          onLog(`Error loading tables from solution: ${error.message}`, "error");
+        })
+        .finally(() => {
+          setLoadingMeta(false);
+        });
+    } else {
+      await dvService
+        .getAllTables()
+        .then((tables) => {
+          viewModel.tableMetadata = tables;
+          onLog(`Loaded ${tables.length} tables from ${connection?.name}`, "success");
+        })
+        .catch((error: { message: any }) => {
+          onLog(`Error loading tables: ${error.message}`, "error");
+        })
+        .finally(() => {
+          setLoadingMeta(false);
+        });
+    }
   }
-  const [selectedValue, setSelectedValue] = React.useState<TabValue>("tables");
 
   function tableAttributeList() {
     if (
@@ -111,6 +162,22 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       ));
   }
 
+  function solutionSelectList() {
+    if (!viewModel.solutions || viewModel.solutions.length === 0) {
+      return [];
+    }
+    return viewModel.solutions.map((solution) => (
+      <ListItem
+        key={solution.solutionId}
+        value={solution.solutionId}
+        aria-label={solution.solutionName}
+        checkmark={{ "aria-label": solution.solutionName }}
+      >
+        {solution.solutionName} ({solution.uniqueName})
+      </ListItem>
+    ));
+  }
+
   function createTableColumnsFrom(): TableColumnDefinition<TableMeta>[] {
     return viewModel.tableColumns
       .filter((col) => col)
@@ -131,10 +198,28 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         })
       );
   }
+  const searchTables = async (_searchQuery: string) => {
+    console.log("Searching tables with query: ", _searchQuery);
+    setTableQuery(_searchQuery);
+    console.log("Searching tables with tableq: ", tableQuery);
+  };
+
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedValue(data.value);
   };
-
+  const debounce = <T extends (searchQuery: string) => unknown>(func: T, delay: number) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (searchQuery: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(searchQuery), delay);
+    };
+  };
+  const debouncedSearch = React.useCallback(debounce(searchTables, 300), []);
+  function tableSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    //setTableQuery(data.value ?? "");
+    console.log("Table search input: ", tableQuery);
+    debouncedSearch(data.value ?? "");
+  }
   function editColumnsClick(): void {
     setIsTableColumnEditOpen(true);
   }
@@ -143,6 +228,18 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     setIsTableColumnEditOpen(false);
 
     viewModel.tableColumns = selectedTableCols.map((id) => id.toString());
+  }
+
+  function saveSolutionSelection(): void {
+    setIsSolutionSelOpen(false);
+    if (selectedSolutionIds.length === 0) {
+      onLog("No solution selected.", "warning");
+      return;
+    }
+    viewModel.selectedSolution = viewModel.solutions.find(
+      (sol) => sol.solutionId === selectedSolutionIds[0].toString()
+    );
+    getTableMeta();
   }
 
   const tableColumns: TableColumnDefinition<TableMeta>[] = [
@@ -218,7 +315,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   const DataGridView = React.memo(() => (
     <>
-      <DataGrid columns={tableColumns} items={viewModel.tableMetadata} aria-label="Simple data grid" sortable>
+      <DataGrid columns={tableColumns} items={filterdTableMetadata} aria-label="Simple data grid" sortable>
         <DataGridHeader
           style={{
             position: "sticky",
@@ -243,9 +340,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     </>
   ));
 
-  if (loadingMeta) {
-    return <div>Loading metadata...</div>;
-  }
+  // if (loadingMeta) {
+  //   return <div>Loading metadata...</div>;
+  // }
 
   const tableColumnDrawer = (
     <OverlayDrawer
@@ -284,9 +381,97 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       </DrawerFooter>
     </OverlayDrawer>
   );
+
+  const solutionSelDrawer = (
+    <OverlayDrawer position="end" open={isSolutionSelOpen} onOpenChange={(_, { open }) => setIsSolutionSelOpen(open)}>
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsSolutionSelOpen(false)}
+            />
+          }
+        >
+          Select a Solution
+        </DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <ToggleButton
+            onClick={() => {
+              setManaged(false);
+              //onLog("Managed filter set to TRUE", "info");
+            }}
+            checked={!managed}
+            shape="circular"
+            size="small"
+            appearance="subtle"
+            aria-label="Show unmanaged solutions"
+            title="Show Unmanaged"
+            icon={<EditRegular />}
+          >
+            Unmanaged
+          </ToggleButton>
+
+          <ToggleButton
+            onClick={() => {
+              setManaged(true);
+            }}
+            checked={managed}
+            shape="circular"
+            size="small"
+            appearance="subtle"
+            aria-label="Show managed solutions"
+            title="Show Managed"
+            icon={<LockClosedRegular />}
+          >
+            Managed
+          </ToggleButton>
+        </div>
+        <List
+          selectionMode="single"
+          selectedItems={selectedSolutionIds}
+          onSelectionChange={(_, data) => setSelectedSolutionIds(data.selectedItems)}
+          aria-label="List of solutions"
+        >
+          <div style={{ fontSize: "small" }}>{solutionSelectList()}</div>
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveSolutionSelection}>
+          Save
+        </Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
+
+  const allTablesMenu = (
+    <Menu positioning="below-end">
+      <MenuTrigger disableButtonEnhancement>
+        {(triggerProps: MenuButtonProps) => (
+          <SplitButton menuButton={triggerProps} primaryActionButton={{ onClick: getAllTableMeta }}>
+            All Tables
+          </SplitButton>
+        )}
+      </MenuTrigger>
+
+      <MenuPopover>
+        <MenuList>
+          <MenuItem onClick={() => setIsSolutionSelOpen(true)}>Select a Solution</MenuItem>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
+  );
+
   return (
     <div>
       {tableColumnDrawer}
+      {solutionSelDrawer}
       <div className={styles.root}>
         <TabList
           style={{ position: "sticky", top: 0, zIndex: 10 }}
@@ -300,14 +485,37 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
           <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
             {selectedValue === "tables" && (
               <div style={{ marginLeft: "auto", padding: "0 10px" }}>
+                {viewModel.tableMetadata.length > 0 && (
+                  <SearchBox
+                    size="small"
+                    placeholder="Search Tables"
+                    aria-label="Search Display & Logical Name"
+                    onChange={tableSearch}
+                  />
+                )}
+                {tableQuery}
+                {viewModel.selectedSolution && (
+                  <div style={{ display: "inline-block", padding: "2px 5px" }}>
+                    Solution: {viewModel.selectedSolution?.solutionName}{" "}
+                  </div>
+                )}
+                <div style={{ display: "inline-block", padding: "0 10px" }}>{allTablesMenu}</div>
                 <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
               </div>
             )}
           </div>
         </TabList>
         <div>
-          {selectedValue === "tables" && <DataGridView />}
-          {tableDetails}
+          {loadingMeta ? (
+            "Loading Metadata..."
+          ) : !viewModel.tableMetadata || viewModel.tableMetadata.length === 0 ? (
+            "Select All Tables or a Solution to load metadata."
+          ) : (
+            <>
+              {selectedValue === "tables" && <DataGridView />}
+              {tableDetails}
+            </>
+          )}
         </div>
       </div>
     </div>
