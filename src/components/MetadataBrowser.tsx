@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { observer } from "mobx-react";
 
 import {
+  Button,
   createTableColumn,
   DataGrid,
   DataGridBody,
@@ -9,7 +10,15 @@ import {
   DataGridHeader,
   DataGridHeaderCell,
   DataGridRow,
+  DrawerBody,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  List,
+  ListItem,
   makeStyles,
+  OverlayDrawer,
+  SelectionItemId,
   SelectTabData,
   SelectTabEvent,
   Tab,
@@ -23,6 +32,7 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
+import { ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -39,6 +49,8 @@ interface MetadataBrowserProps {
 export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX.Element => {
   const { connection, dvService, onLog, viewModel } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
+  const [isTableColumnEditOpen, setIsTableColumnEditOpen] = React.useState(false);
+  const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(viewModel.tableColumns);
   const styles = useStyles();
 
   const showNotification = useCallback(
@@ -77,11 +89,63 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
   const [selectedValue, setSelectedValue] = React.useState<TabValue>("tables");
 
+  function tableAttributeList() {
+    if (
+      !viewModel.tableMetadata ||
+      viewModel.tableMetadata.length === 0 ||
+      viewModel.tableMetadata[0].attributes.length === 0
+    ) {
+      return [];
+    }
+    return viewModel.tableMetadata[0].attributes
+      .filter((field) => field.attributeName != "DisplayName" && field.attributeName != "LogicalName")
+      .map((field) => (
+        <ListItem
+          key={field.attributeName}
+          value={field.attributeName}
+          aria-label={field.attributeName}
+          checkmark={{ "aria-label": field.attributeName }}
+        >
+          {field.attributeName}
+        </ListItem>
+      ));
+  }
+
+  function createTableColumnsFrom(): TableColumnDefinition<TableMeta>[] {
+    return viewModel.tableColumns
+      .filter((col) => col)
+      .map((col) =>
+        createTableColumn<TableMeta>({
+          columnId: col,
+          compare: (a, b) => {
+            const aVal = a.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
+            const bVal = b.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
+            return aVal.localeCompare(bVal);
+          },
+          renderHeaderCell: () => {
+            return col;
+          },
+          renderCell: (item) => {
+            return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+          },
+        })
+      );
+  }
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedValue(data.value);
   };
 
-  const columns: TableColumnDefinition<TableMeta>[] = [
+  function editColumnsClick(): void {
+    setIsTableColumnEditOpen(true);
+  }
+
+  function saveTableColumnSelection(): void {
+    setIsTableColumnEditOpen(false);
+
+    viewModel.tableColumns = selectedTableCols.map((id) => id.toString());
+  }
+
+  const tableColumns: TableColumnDefinition<TableMeta>[] = [
     createTableColumn<TableMeta>({
       columnId: "name",
       compare: (a, b) => {
@@ -106,6 +170,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         return <div style={{ verticalAlign: "top" }}>{item.tableName}</div>;
       },
     }),
+    ...createTableColumnsFrom(),
   ];
 
   const handleRowDoubleClick = React.useCallback(
@@ -153,7 +218,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   const DataGridView = React.memo(() => (
     <>
-      <DataGrid columns={columns} items={viewModel.tableMetadata} aria-label="Simple data grid" sortable>
+      <DataGrid columns={tableColumns} items={viewModel.tableMetadata} aria-label="Simple data grid" sortable>
         <DataGridHeader
           style={{
             position: "sticky",
@@ -182,14 +247,63 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     return <div>Loading metadata...</div>;
   }
 
+  const tableColumnDrawer = (
+    <OverlayDrawer
+      position="end"
+      open={isTableColumnEditOpen}
+      onOpenChange={(_, { open }) => setIsTableColumnEditOpen(open)}
+    >
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsTableColumnEditOpen(false)}
+            />
+          }
+        ></DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <List
+          selectionMode="multiselect"
+          selectedItems={selectedTableCols}
+          onSelectionChange={(_, data) => setSelectedTableCols(data.selectedItems)}
+          aria-label="List of attributes to display for columns"
+        >
+          {tableAttributeList()}
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
+          Save
+        </Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
   return (
     <div>
+      {tableColumnDrawer}
       <div className={styles.root}>
-        <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
+        <TabList
+          style={{ position: "sticky", top: 0, zIndex: 10 }}
+          selectedValue={selectedValue}
+          onTabSelect={onTabSelect}
+        >
           <Tab id="Tables" value="tables">
             Tables
           </Tab>
           {tableTabs}
+          <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
+            {selectedValue === "tables" && (
+              <div style={{ marginLeft: "auto", padding: "0 10px" }}>
+                <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
+              </div>
+            )}
+          </div>
         </TabList>
         <div>
           {selectedValue === "tables" && <DataGridView />}

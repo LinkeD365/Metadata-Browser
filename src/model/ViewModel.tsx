@@ -7,7 +7,8 @@ export class ViewModel {
   tableMetadata: TableMeta[] = [];
   selectedTables: TableMeta[] = [];
   fieldColummns: string[] = [];
-  
+  tableColumns: string[] = [];
+
   constructor() {
     this.orgId = "";
     makeAutoObservable(this);

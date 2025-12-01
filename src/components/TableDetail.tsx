@@ -46,16 +46,23 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     if (selTable.fields.length === 0) {
       return [];
     }
-    return selTable.fields[0].attributes.map((field) => (
-      <ListItem
-        key={field.attributeName}
-        value={field.attributeName}
-        aria-label={field.attributeName}
-        checkmark={{ "aria-label": field.attributeName }}
-      >
-        {field.attributeName}
-      </ListItem>
-    ));
+    return selTable.fields[0].attributes
+      .filter(
+        (field) =>
+          field.attributeName != "AttributeType" &&
+          field.attributeName != "DisplayName" &&
+          field.attributeName != "LogicalName"
+      )
+      .map((field) => (
+        <ListItem
+          key={field.attributeName}
+          value={field.attributeName}
+          aria-label={field.attributeName}
+          checkmark={{ "aria-label": field.attributeName }}
+        >
+          {field.attributeName}
+        </ListItem>
+      ));
   }
   const Details = React.memo(() => (
     <div role="tabpanel" aria-labelledby={`${table}-details`}>
@@ -88,9 +95,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
   function editColumnsClick(): void {
     setIsColumnEditOpen(true);
-    // runInAction(() => {
-    //   viewModel.fieldColummns.push("CanBeSecuredForRead");
-    // });
   }
 
   function saveTableColumnSelection(): void {
@@ -120,14 +124,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             selectionMode="multiselect"
             selectedItems={selectedItems}
             onSelectionChange={(_, data) => setSelectedItems(data.selectedItems)}
-            aria-label="People example"
+            aria-label="List of attributes to display for columns"
           >
             {items()}
           </List>
         </DrawerBody>
 
-        <DrawerFooter>
-          <Button appearance="primary" onClick={saveTableColumnSelection}>
+        <DrawerFooter style={{ display: "flex", width: "100%" }}>
+          <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
             Save
           </Button>
         </DrawerFooter>
@@ -141,13 +145,10 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <Tab id="columns" value="columns">
               Columns
             </Tab>
-            <div style={{ display: "flex", width: "100%" }}>
-              {selectedItems.length}
+            <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
-                <div style={{ marginLeft: "auto", padding: "0 10px" }}>
-                  <Button icon={<ColumnEditRegular />} onClick={editColumnsClick}>
-                    Edit Columns
-                  </Button>
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
                 </div>
               )}
             </div>

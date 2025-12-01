@@ -6,11 +6,22 @@ export class TableMeta {
   displayName: string;
 
   fields: FieldMeta[] = [];
+  attributes: TableAttribute[] = [];
 
   constructor() {
     this.tableName = "";
     this.displayName = "";
 
+    makeAutoObservable(this);
+  }
+}
+
+export class TableAttribute {
+  attributeName: string;
+  attributeValue: string;
+  constructor() {
+    this.attributeName = "";
+    this.attributeValue = "";
     makeAutoObservable(this);
   }
 }
