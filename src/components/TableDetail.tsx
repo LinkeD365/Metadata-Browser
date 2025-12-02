@@ -8,9 +8,12 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerHeaderTitle,
+  InputOnChangeData,
   List,
   ListItem,
   OverlayDrawer,
+  SearchBox,
+  SearchBoxChangeEvent,
   SelectionItemId,
   SelectTabData,
   SelectTabEvent,
@@ -40,27 +43,49 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     setSelectedValue(data.value);
   };
   const [isColumnEditOpen, setIsColumnEditOpen] = React.useState(false);
-  const [selectedItems, setSelectedItems] = React.useState<SelectionItemId[]>(viewModel.fieldColummns);
+  const [selectedItems, setSelectedItems] = React.useState<SelectionItemId[]>(viewModel.columnAttributes);
   const [selTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
+
+  const [columnQuery, setColumnQuery] = React.useState<string>("");
+
+  const debounce = <T extends (searchQuery: string) => unknown>(func: T, delay: number) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (searchQuery: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(searchQuery), delay);
+    };
+  };
+  const searchColumns = async (_searchQuery: string) => {
+    setColumnQuery(_searchQuery);
+    selTable.searchQuery = _searchQuery;
+  };
+  const debouncedSearch = React.useCallback(debounce(searchColumns, 300), []);
+
+  function columnSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    //setTableQuery(data.value ?? "");
+    console.log("Table search input: ", columnQuery);
+    debouncedSearch(data.value ?? "");
+  }
+
   function items() {
-    if (selTable.fields.length === 0) {
+    if (selTable.columns.length === 0) {
       return [];
     }
-    return selTable.fields[0].attributes
+    return selTable.columns[0].attributes
       .filter(
-        (field) =>
-          field.attributeName != "AttributeType" &&
-          field.attributeName != "DisplayName" &&
-          field.attributeName != "LogicalName"
+        (attr) =>
+          attr.attributeName != "AttributeType" &&
+          attr.attributeName != "DisplayName" &&
+          attr.attributeName != "LogicalName"
       )
-      .map((field) => (
+      .map((attr) => (
         <ListItem
-          key={field.attributeName}
-          value={field.attributeName}
-          aria-label={field.attributeName}
-          checkmark={{ "aria-label": field.attributeName }}
+          key={attr.attributeName}
+          value={attr.attributeName}
+          aria-label={attr.attributeName}
+          checkmark={{ "aria-label": attr.attributeName }}
         >
-          {field.attributeName}
+          {attr.attributeName}
         </ListItem>
       ));
   }
@@ -100,42 +125,46 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   function saveTableColumnSelection(): void {
     setIsColumnEditOpen(false);
 
-    viewModel.fieldColummns = selectedItems.map((id) => id.toString());
+    viewModel.columnAttributes = selectedItems.map((id) => id.toString());
   }
+
+  const columnDrawer = (
+    <OverlayDrawer position="end" open={isColumnEditOpen} onOpenChange={(_, { open }) => setIsColumnEditOpen(open)}>
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsColumnEditOpen(false)}
+            />
+          }
+        ></DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <List
+          selectionMode="multiselect"
+          selectedItems={selectedItems}
+          onSelectionChange={(_, data) => setSelectedItems(data.selectedItems)}
+          aria-label="List of attributes to display for columns"
+        >
+          {items()}
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
+          Save
+        </Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
 
   return (
     <>
-      <OverlayDrawer position="end" open={isColumnEditOpen} onOpenChange={(_, { open }) => setIsColumnEditOpen(open)}>
-        <DrawerHeader>
-          <DrawerHeaderTitle
-            action={
-              <Button
-                appearance="subtle"
-                aria-label="Close"
-                icon={<Dismiss24Regular />}
-                onClick={() => setIsColumnEditOpen(false)}
-              />
-            }
-          ></DrawerHeaderTitle>
-        </DrawerHeader>
-
-        <DrawerBody>
-          <List
-            selectionMode="multiselect"
-            selectedItems={selectedItems}
-            onSelectionChange={(_, data) => setSelectedItems(data.selectedItems)}
-            aria-label="List of attributes to display for columns"
-          >
-            {items()}
-          </List>
-        </DrawerBody>
-
-        <DrawerFooter style={{ display: "flex", width: "100%" }}>
-          <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
-            Save
-          </Button>
-        </DrawerFooter>
-      </OverlayDrawer>
+      {columnDrawer}
       {selectedTable === table && (
         <div>
           <TabList selectedValue={selectedValue} onTabSelect={onTabSelect} size="small">
@@ -148,6 +177,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  {selTable.columns.length > 0 && (
+                    <SearchBox
+                      size="small"
+                      placeholder="Search Columns"
+                      aria-label="Search Display, Logical & Type"
+                      onChange={columnSearch}
+                    />
+                  )}
                   <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
                 </div>
               )}
