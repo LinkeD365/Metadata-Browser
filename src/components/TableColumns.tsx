@@ -101,7 +101,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
       );
   }
 
-  const staticAttributes: TableColumnDefinition<ColumnMeta>[] = [
+  const attributes: TableColumnDefinition<ColumnMeta>[] = [
     createTableColumn<ColumnMeta>({
       columnId: "name",
       compare: (a, b) => {
@@ -147,7 +147,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         "Loading..."
       ) : (
         <>
-          <DataGrid columns={staticAttributes} items={filteredColumns} sortable>
+          <DataGrid columns={attributes} items={filteredColumns} sortable>
             <DataGridHeader
               style={{
                 position: "sticky",

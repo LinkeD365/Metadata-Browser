@@ -9,6 +9,7 @@ import {
   DataGridCell,
   DataGridHeader,
   DataGridHeaderCell,
+  DataGridProps,
   DataGridRow,
   DrawerBody,
   DrawerFooter,
@@ -34,6 +35,7 @@ import {
   SplitButton,
   Tab,
   TableColumnDefinition,
+  TableRowId,
   TabList,
   TabValue,
   ToggleButton,
@@ -44,7 +46,14 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
-import { ColumnEditRegular, Dismiss24Regular, EditRegular, LockClosedRegular } from "@fluentui/react-icons";
+import {
+  ArrowExportUpRegular,
+  ColumnEditRegular,
+  Dismiss24Regular,
+  EditRegular,
+  LockClosedRegular,
+  TextboxMoreRegular,
+} from "@fluentui/react-icons";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -64,10 +73,15 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const [isTableColumnEditOpen, setIsTableColumnEditOpen] = React.useState(false);
   const [isSolutionSelOpen, setIsSolutionSelOpen] = React.useState(false);
   const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(viewModel.tableAttributes);
-  const [selectedValue, setSelectedValue] = React.useState<TabValue>("tables");
+  const [selectedTab, setSelectedTab] = React.useState<TabValue>("tables");
   const [managed, setManaged] = React.useState<boolean>(false);
   const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
   const [tableQuery, setTableQuery] = React.useState<string>("");
+  const [selectedTables, setSelectedTables] = React.useState<Set<TableRowId>>();
+  const onSelectionChange: DataGridProps["onSelectionChange"] = (_e, data) => {
+    console.log(data);
+    setSelectedTables(data.selectedItems);
+  };
   const filterdTableMetadata: TableMeta[] = React.useMemo(() => {
     if (!tableQuery || tableQuery.trim() === "") {
       return viewModel.tableMetadata;
@@ -204,8 +218,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   };
 
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
-    setSelectedValue(data.value);
+    setSelectedTab(data.value);
   };
+
   const debounce = <T extends (searchQuery: string) => unknown>(func: T, delay: number) => {
     let timeoutId: ReturnType<typeof setTimeout>;
     return (searchQuery: string) => {
@@ -213,14 +228,53 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       timeoutId = setTimeout(() => func(searchQuery), delay);
     };
   };
-  const debouncedSearch = React.useCallback(debounce(searchTables, 300), []);
+
+  const debouncedTableSearch = React.useCallback(debounce(searchTables, 300), []);
+
   function tableSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     //setTableQuery(data.value ?? "");
     console.log("Table search input: ", tableQuery);
-    debouncedSearch(data.value ?? "");
+    debouncedTableSearch(data.value ?? "");
   }
+
   function editColumnsClick(): void {
     setIsTableColumnEditOpen(true);
+  }
+
+  function exportTablesClick(): void {
+    console.log("Export Tables Clicked", selectedTables);
+    if (selectedTables === undefined || selectedTables.size === 0) {
+      window.toolboxAPI.utils.showNotification({
+        title: "No Tables Selected",
+        body: "Please select one or more tables to export.",
+      });
+      return;
+    }
+    const data = viewModel.tableMetadata.filter((t) =>
+      selectedTables ? selectedTables.has(t.tableName as TableRowId) : false
+    );
+
+    const headers = ["Table Name", "Logical Name", ...viewModel.tableAttributes.map((attr) => attr)];
+    const rows = data.map((table) => [
+      table.displayName,
+      table.tableName,
+      ...viewModel.tableAttributes.map(
+        (attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""
+      ),
+    ]);
+    const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
+
+    console.log("CSV Data:\n", csvString);
+    window.toolboxAPI.utils.saveFile("table_metadata.csv", csvString);
+    // const csvString = [
+    //   ["Header1", "Header2", "Header3"], // Specify your headers here
+    //   ...data.map((item) => [item.field1, item.field2, item.field3]), // Map your data fields accordingly
+    // ]
+    //   .map((row) => row.join(","))
+    //   .join("\n");
+
+    // // Create a Blob from the CSV string
+    // const blob = new Blob([csvString], { type: "text/csv" });
   }
 
   function saveTableColumnSelection(): void {
@@ -242,6 +296,27 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   const tableColumns: TableColumnDefinition<TableMeta>[] = [
+    createTableColumn<TableMeta>({
+      columnId: "details",
+      renderHeaderCell: () => {
+        return " ";
+      },
+      renderCell: (item) => {
+        return (
+          <div style={{ verticalAlign: "top" }}>
+            <Button
+              icon={<TextboxMoreRegular />}
+              size="small"
+              appearance="secondary"
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                handleRowDoubleClick(item);
+              }}
+            />
+          </div>
+        );
+      },
+    }),
     createTableColumn<TableMeta>({
       columnId: "name",
       compare: (a, b) => {
@@ -271,6 +346,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   const handleRowDoubleClick = React.useCallback(
     (item: TableMeta) => {
+      console.log("Row double clicked: ", item);
       if (!viewModel.selectedTables) {
         viewModel.selectedTables = [];
       }
@@ -278,9 +354,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       if (!exists) {
         viewModel.selectedTables.push(item);
         onLog(`Added "${item.displayName}" to selected tables.`, "success");
-      } else {
-        onLog(`"${item.displayName}" is already in selected tables.`, "info");
       }
+      setSelectedTab(item.tableName as TabValue);
     },
     [viewModel, onLog]
   );
@@ -304,7 +379,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         isLoading={loadingMeta}
         viewModel={viewModel}
         table={t.tableName}
-        selectedTable={selectedValue as string}
+        selectedTable={selectedTab as string}
         onLog={onLog}
         showNotification={showNotification}
       />
@@ -312,9 +387,41 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     </div>
   ));
 
-  const DataGridView = React.memo(() => (
+  const columnSizingOptions = {
+    name: {
+      minWidth: 80,
+      maxWidth: 500,
+      defaultWidth: 400,
+    },
+    current: {
+      defaultWidth: 150,
+      minWidth: 30,
+      idealWidth: 200,
+    },
+    details: {
+      defaultWidth: 30,
+      minWidth: 30,
+      maxWidth: 30,
+      idealWidth: 30,
+    },
+  };
+
+  const TableDataGrid = React.memo(() => (
     <>
-      <DataGrid columns={tableColumns} items={filterdTableMetadata} aria-label="Simple data grid" sortable>
+      <DataGrid
+        columns={tableColumns}
+        items={filterdTableMetadata}
+        aria-label="Simple data grid"
+        sortable
+        subtleSelection
+        selectionMode="multiselect"
+        selectionAppearance="neutral"
+        selectedItems={selectedTables}
+        getRowId={(item) => item.tableName}
+        onSelectionChange={onSelectionChange}
+        columnSizingOptions={columnSizingOptions}
+        resizableColumns
+      >
         <DataGridHeader
           style={{
             position: "sticky",
@@ -324,13 +431,27 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
           }}
         >
-          <DataGridRow>
+          <DataGridRow
+            selectionCell={{
+              checkboxIndicator: { "aria-label": "Select All rows" },
+            }}
+          >
             {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
           </DataGridRow>
         </DataGridHeader>
         <DataGridBody<TableMeta>>
           {({ item, rowId }) => (
-            <DataGridRow<TableMeta> key={rowId} onDoubleClick={() => handleRowDoubleClick(item)}>
+            <DataGridRow<TableMeta>
+              key={rowId}
+              onDoubleClick={(e: React.MouseEvent) => {
+                console.log("Row double clicked: ", item);
+                e.stopPropagation();
+                handleRowDoubleClick(item);
+              }}
+              selectionCell={{
+                checkboxIndicator: { "aria-label": "Select row" },
+              }}
+            >
               {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
             </DataGridRow>
           )}
@@ -474,7 +595,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       <div className={styles.root}>
         <TabList
           style={{ position: "sticky", top: 0, zIndex: 10 }}
-          selectedValue={selectedValue}
+          selectedValue={selectedTab}
           onTabSelect={onTabSelect}
         >
           <Tab id="Tables" value="tables">
@@ -482,7 +603,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
           </Tab>
           {tableTabs}
           <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
-            {selectedValue === "tables" && (
+            {selectedTab === "tables" && (
               <div style={{ marginLeft: "auto", padding: "0 10px" }}>
                 {viewModel.tableMetadata.length > 0 && (
                   <SearchBox
@@ -490,6 +611,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
                     placeholder="Search Tables"
                     aria-label="Search Display & Logical Name"
                     onChange={tableSearch}
+                    style={{ margin: "2px" }}
                   />
                 )}
                 {tableQuery}
@@ -499,7 +621,16 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
                   </Label>
                 )}
                 <div style={{ display: "inline-block", padding: "0 2px" }}>{allTablesMenu}</div>
-                <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
+                <Button
+                  icon={<ColumnEditRegular />}
+                  onClick={editColumnsClick}
+                  disabled={viewModel.tableMetadata.length === 0}
+                />
+                <Button
+                  icon={<ArrowExportUpRegular />}
+                  onClick={exportTablesClick}
+                  disabled={!selectedTables || selectedTables.size === 0}
+                />
               </div>
             )}
           </div>
@@ -511,7 +642,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             "Select All Tables or a Solution to load metadata."
           ) : (
             <>
-              {selectedValue === "tables" && <DataGridView />}
+              {selectedTab === "tables" && <TableDataGrid />}
               {tableDetails}
             </>
           )}
