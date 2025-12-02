@@ -4,6 +4,13 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import {
   Button,
+  createTableColumn,
+  DataGrid,
+  DataGridBody,
+  DataGridCell,
+  DataGridHeader,
+  DataGridHeaderCell,
+  DataGridRow,
   DrawerBody,
   DrawerFooter,
   DrawerHeader,
@@ -18,12 +25,15 @@ import {
   SelectTabData,
   SelectTabEvent,
   Tab,
+  TableColumnDefinition,
   TabList,
   TabValue,
+  tokens,
 } from "@fluentui/react-components";
 import { ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
 import { TableColumns } from "./TableColumns";
-import { TableMeta } from "../model/tableMeta";
+import { TableAttribute, TableMeta } from "../model/tableMeta";
+import JSONPretty from "react-json-pretty";
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -45,8 +55,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const [isColumnEditOpen, setIsColumnEditOpen] = React.useState(false);
   const [selectedItems, setSelectedItems] = React.useState<SelectionItemId[]>(viewModel.columnAttributes);
   const [selTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
-
-  const [columnQuery, setColumnQuery] = React.useState<string>("");
+  const [searchAttr, setSearchAttr] = React.useState<string>("");
 
   const debounce = <T extends (searchQuery: string) => unknown>(func: T, delay: number) => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -56,18 +65,24 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     };
   };
   const searchColumns = async (_searchQuery: string) => {
-    setColumnQuery(_searchQuery);
     selTable.searchQuery = _searchQuery;
   };
-  const debouncedSearch = React.useCallback(debounce(searchColumns, 300), []);
+  const debouncedSearchCols = React.useCallback(debounce(searchColumns, 300), []);
 
   function columnSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
-    //setTableQuery(data.value ?? "");
-    console.log("Table search input: ", columnQuery);
-    debouncedSearch(data.value ?? "");
+    //console.log("Table search input: ", columnQuery);
+    debouncedSearchCols(data.value ?? "");
   }
 
-  function items() {
+  const searchAttributes = async (_searchQuery: string) => {
+    setSearchAttr(_searchQuery);
+  };
+  const debouncedSearchAttr = React.useCallback(debounce(searchAttributes, 300), []);
+  function attributeSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    debouncedSearchAttr(data.value ?? "");
+  }
+
+  function columnAttributes() {
     if (selTable.columns.length === 0) {
       return [];
     }
@@ -89,32 +104,80 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         </ListItem>
       ));
   }
+
+  const filteredAttributes: TableAttribute[] = React.useMemo(() => {
+    if (!selTable || searchAttr.trim() === "") {
+      return selTable.attributes;
+    }
+    return selTable.attributes.filter((attr) => attr.attributeName.toLowerCase().includes(searchAttr.toLowerCase()));
+  }, [selTable, searchAttr]);
+
+  const attributes: TableColumnDefinition<TableAttribute>[] = [
+    createTableColumn<TableAttribute>({
+      columnId: "name",
+      compare: (a, b) => {
+        return a.attributeName.localeCompare(b.attributeName);
+      },
+      renderHeaderCell: () => {
+        return "Attribute Name";
+      },
+      renderCell: (item) => {
+        return <div style={{ verticalAlign: "top" }}>{item.attributeName}</div>;
+      },
+    }),
+    createTableColumn<TableAttribute>({
+      columnId: "value",
+      compare: (a, b) => {
+        return a.attributeValue.localeCompare(b.attributeValue);
+      },
+      renderHeaderCell: () => {
+        return "Value";
+      },
+      renderCell: (item) => {
+        return (
+          <JSONPretty
+            style={{ fontSize: "1em", fontFamily: "arial" }}
+            id="json-pretty"
+            mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
+            errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
+            data={item.attributeValue}
+          ></JSONPretty>
+        );
+        try {
+          return <div>test{JSON.stringify(JSON.parse(item.attributeValue))}</div>;
+        } catch {
+          // if (JSON.parse(item.attributeValue)) return <div>{JSON.stringify(item.attributeValue)}</div>;
+          // else
+          return <div style={{ verticalAlign: "top" }}>{item.attributeValue}</div>;
+        }
+      },
+    }),
+  ];
+
   const Details = React.memo(() => (
     <div role="tabpanel" aria-labelledby={`${table}-details`}>
-      <table>
-        <thead>
-          <th>Origin</th>
-          <th>Gate</th>
-          <th>ETA</th>
-        </thead>
-        <tbody>
-          <tr>
-            <td>DEN</td>
-            <td>C3</td>
-            <td>12:40 PM</td>
-          </tr>
-          <tr>
-            <td>SMF</td>
-            <td>D1</td>
-            <td>1:18 PM</td>
-          </tr>
-          <tr>
-            <td>SFO</td>
-            <td>E18</td>
-            <td>1:42 PM</td>
-          </tr>
-        </tbody>
-      </table>
+      <DataGrid columns={attributes} items={filteredAttributes} sortable>
+        <DataGridHeader
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            backgroundColor: tokens.colorNeutralBackground2,
+            boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+          }}
+        >
+          <DataGridRow>
+            {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
+          </DataGridRow>
+        </DataGridHeader>
+        <DataGridBody<TableAttribute>>
+          {({ item, rowId }) => (
+            <DataGridRow<TableAttribute> key={rowId}>
+              {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
+            </DataGridRow>
+          )}
+        </DataGridBody>
+      </DataGrid>
     </div>
   ));
 
@@ -150,7 +213,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           onSelectionChange={(_, data) => setSelectedItems(data.selectedItems)}
           aria-label="List of attributes to display for columns"
         >
-          {items()}
+          {columnAttributes()}
         </List>
       </DrawerBody>
 
@@ -183,9 +246,22 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                       placeholder="Search Columns"
                       aria-label="Search Display, Logical & Type"
                       onChange={columnSearch}
+                      style={{ marginRight: "10px" }}
                     />
                   )}
                   <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
+                </div>
+              )}
+
+              {selectedValue === "details" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  <SearchBox
+                    size="small"
+                    placeholder="Search Attributes"
+                    aria-label="Search Display, Logical & Type"
+                    onChange={attributeSearch}
+                    style={{ marginRight: "10px" }}
+                  />
                 </div>
               )}
             </div>
