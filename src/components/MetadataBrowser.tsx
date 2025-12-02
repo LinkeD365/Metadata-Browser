@@ -33,6 +33,7 @@ import {
   SelectTabData,
   SelectTabEvent,
   SplitButton,
+  Text,
   Tab,
   TableColumnDefinition,
   TableRowId,
@@ -205,7 +206,13 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             return aVal.localeCompare(bVal);
           },
           renderHeaderCell: () => {
-            return col;
+            return (
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                
+                  {col}
+                
+              </div>
+            );
           },
           renderCell: (item) => {
             return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
@@ -390,13 +397,14 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const columnSizingOptions = {
     name: {
       minWidth: 80,
-      maxWidth: 500,
-      defaultWidth: 400,
+      maxWidth: 400,
+      idealWidth: 120,
+      defaultWidth: 120,
     },
-    current: {
-      defaultWidth: 150,
+    logical: {
+      defaultWidth: 80,
       minWidth: 30,
-      idealWidth: 200,
+      idealWidth: 120,
     },
     details: {
       defaultWidth: 30,
@@ -421,6 +429,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         onSelectionChange={onSelectionChange}
         columnSizingOptions={columnSizingOptions}
         resizableColumns
+        resizableColumnsOptions={{
+          autoFitColumns: false,
+        }}
       >
         <DataGridHeader
           style={{
