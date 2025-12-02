@@ -14,7 +14,7 @@ import {
   TableColumnDefinition,
   tokens,
 } from "@fluentui/react-components";
-import { FieldMeta } from "../model/fieldMeta";
+import { ColumnMeta } from "../model/columnMeta";
 
 interface TableColumnsProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -32,21 +32,33 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   const [selectedTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
-  async function getFieldsMeta() {
-    if (!connection) {
+  const filteredColumns: ColumnMeta[] = React.useMemo(() => {
+    if (!selectedTable || selectedTable.searchQuery?.trim() === "") {
+      return selectedTable.columns;
+    } else
+      return selectedTable.columns.filter(
+        (t) =>
+          t.displayName.toLowerCase().includes(selectedTable.searchQuery?.toLowerCase() ?? "") ||
+          t.columnName.toLowerCase().includes(selectedTable.searchQuery?.toLowerCase() ?? "") ||
+          t.dataType.toLowerCase().includes(selectedTable.searchQuery?.toLowerCase() ?? "")
+      );
+  }, [selectedTable.searchQuery, selectedTable.columns]);
+
+  async function getColumnsMeta() {
+    if (!connection || !connection.isActive) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
-    if (selectedTable.fields.length > 0) {
+    if (selectedTable.columns.length > 0) {
       return;
     }
     try {
       setLoadingMeta(true);
       await dvService
-        .getFieldsMeta(table)
-        .then((fields) => {
-          selectedTable.fields = fields;
-          onLog(`Loaded ${fields.length} columns for table: ${table}`, "success");
+        .getColumnsMeta(table)
+        .then((columns) => {
+          selectedTable.columns = columns;
+          onLog(`Loaded ${columns.length} columns for table: ${table}`, "success");
         })
         .catch((error: { message: any }) => {
           throw new Error(error.message);
@@ -63,56 +75,58 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   React.useEffect(() => {
     onLog(`Loading columns for table: ${table}`, "info");
 
-    if (selectedTable && selectedTable.fields?.length === 0) {
-      getFieldsMeta();
+    if (selectedTable && selectedTable.columns?.length === 0) {
+      getColumnsMeta();
     }
   }, [selectedTable, table]);
 
-  function createColumnsFromFieldColumns(): TableColumnDefinition<FieldMeta>[] {
-    return viewModel.fieldColummns.filter(col => col).map((col) =>
-      createTableColumn<FieldMeta>({
-        columnId: col,
-        compare: (a, b) => {
-          const aVal = a.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
-          const bVal = b.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
-          return aVal.localeCompare(bVal);
-        },
-        renderHeaderCell: () => {
-          return col;
-        },
-        renderCell: (item) => {
-          return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
-        },
-      })
-    );
+  function createColumnsFromSelColumns(): TableColumnDefinition<ColumnMeta>[] {
+    return viewModel.columnAttributes
+      .filter((col) => col)
+      .map((col) =>
+        createTableColumn<ColumnMeta>({
+          columnId: col,
+          compare: (a, b) => {
+            const aVal = a.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
+            const bVal = b.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
+            return aVal.localeCompare(bVal);
+          },
+          renderHeaderCell: () => {
+            return col;
+          },
+          renderCell: (item) => {
+            return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+          },
+        })
+      );
   }
 
-  const fieldColumns: TableColumnDefinition<FieldMeta>[] = [
-    createTableColumn<FieldMeta>({
+  const staticAttributes: TableColumnDefinition<ColumnMeta>[] = [
+    createTableColumn<ColumnMeta>({
       columnId: "name",
       compare: (a, b) => {
         return a.displayName.localeCompare(b.displayName);
       },
       renderHeaderCell: () => {
-        return "Field";
+        return "Column Name";
       },
       renderCell: (item) => {
         return <div style={{ verticalAlign: "top" }}>{item.displayName}</div>;
       },
     }),
-    createTableColumn<FieldMeta>({
+    createTableColumn<ColumnMeta>({
       columnId: "logical",
       compare: (a, b) => {
-        return a.fieldName.localeCompare(b.fieldName);
+        return a.columnName.localeCompare(b.columnName);
       },
       renderHeaderCell: () => {
         return "Logical";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.fieldName}</div>;
+        return <div style={{ verticalAlign: "top" }}>{item.columnName}</div>;
       },
     }),
-    createTableColumn<FieldMeta>({
+    createTableColumn<ColumnMeta>({
       columnId: "type",
       compare: (a, b) => {
         return a.dataType.localeCompare(b.dataType);
@@ -124,7 +138,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return <div style={{ verticalAlign: "top" }}>{item.dataType}</div>;
       },
     }),
-    ...createColumnsFromFieldColumns(),
+    ...createColumnsFromSelColumns(),
   ];
 
   return (
@@ -133,7 +147,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         "Loading..."
       ) : (
         <>
-          <DataGrid columns={fieldColumns} items={selectedTable.fields} sortable>
+          <DataGrid columns={staticAttributes} items={filteredColumns} sortable>
             <DataGridHeader
               style={{
                 position: "sticky",
@@ -147,9 +161,9 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
                 {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
               </DataGridRow>
             </DataGridHeader>
-            <DataGridBody<FieldMeta>>
+            <DataGridBody<ColumnMeta>>
               {({ item, rowId }) => (
-                <DataGridRow<FieldMeta> key={rowId}>
+                <DataGridRow<ColumnMeta> key={rowId}>
                   {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
                 </DataGridRow>
               )}

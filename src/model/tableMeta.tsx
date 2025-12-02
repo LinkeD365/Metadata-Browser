@@ -1,12 +1,13 @@
 import { makeAutoObservable } from "mobx";
-import { FieldMeta } from "./fieldMeta";
+import { ColumnMeta } from "./columnMeta";
 
 export class TableMeta {
   tableName: string;
   displayName: string;
 
-  fields: FieldMeta[] = [];
+  columns: ColumnMeta[] = [];
   attributes: TableAttribute[] = [];
+  searchQuery?: string;
 
   constructor() {
     this.tableName = "";

@@ -15,6 +15,7 @@ import {
   DrawerHeader,
   DrawerHeaderTitle,
   InputOnChangeData,
+  Label,
   List,
   ListItem,
   makeStyles,
@@ -62,7 +63,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const [loadingMeta, setLoadingMeta] = React.useState(false);
   const [isTableColumnEditOpen, setIsTableColumnEditOpen] = React.useState(false);
   const [isSolutionSelOpen, setIsSolutionSelOpen] = React.useState(false);
-  const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(viewModel.tableColumns);
+  const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(viewModel.tableAttributes);
   const [selectedValue, setSelectedValue] = React.useState<TabValue>("tables");
   const [managed, setManaged] = React.useState<boolean>(false);
   const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
@@ -149,15 +150,15 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       return [];
     }
     return viewModel.tableMetadata[0].attributes
-      .filter((field) => field.attributeName != "DisplayName" && field.attributeName != "LogicalName")
-      .map((field) => (
+      .filter((attr) => attr.attributeName != "DisplayName" && attr.attributeName != "LogicalName")
+      .map((attr) => (
         <ListItem
-          key={field.attributeName}
-          value={field.attributeName}
-          aria-label={field.attributeName}
-          checkmark={{ "aria-label": field.attributeName }}
+          key={attr.attributeName}
+          value={attr.attributeName}
+          aria-label={attr.attributeName}
+          checkmark={{ "aria-label": attr.attributeName }}
         >
-          {field.attributeName}
+          {attr.attributeName}
         </ListItem>
       ));
   }
@@ -179,7 +180,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function createTableColumnsFrom(): TableColumnDefinition<TableMeta>[] {
-    return viewModel.tableColumns
+    return viewModel.tableAttributes
       .filter((col) => col)
       .map((col) =>
         createTableColumn<TableMeta>({
@@ -199,9 +200,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       );
   }
   const searchTables = async (_searchQuery: string) => {
-    console.log("Searching tables with query: ", _searchQuery);
     setTableQuery(_searchQuery);
-    console.log("Searching tables with tableq: ", tableQuery);
   };
 
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
@@ -227,7 +226,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   function saveTableColumnSelection(): void {
     setIsTableColumnEditOpen(false);
 
-    viewModel.tableColumns = selectedTableCols.map((id) => id.toString());
+    viewModel.tableAttributes = selectedTableCols.map((id) => id.toString());
   }
 
   function saveSolutionSelection(): void {
@@ -495,11 +494,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
                 )}
                 {tableQuery}
                 {viewModel.selectedSolution && (
-                  <div style={{ display: "inline-block", padding: "2px 5px" }}>
+                  <Label size="small" style={{ padding: "2px 2px" }}>
                     Solution: {viewModel.selectedSolution?.solutionName}{" "}
-                  </div>
+                  </Label>
                 )}
-                <div style={{ display: "inline-block", padding: "0 10px" }}>{allTablesMenu}</div>
+                <div style={{ display: "inline-block", padding: "0 2px" }}>{allTablesMenu}</div>
                 <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
               </div>
             )}

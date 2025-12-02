@@ -1,21 +1,21 @@
 import { makeAutoObservable } from "mobx";
 
-export class FieldMeta {
-  fieldName: string;
+export class ColumnMeta {
+  columnName: string;
   displayName: string;
   dataType: string;
 
-  attributes: FieldAttribute[] = [];
+  attributes: ColumnAttribute[] = [];
 
   constructor() {
-    this.fieldName = "";
+    this.columnName = "";
     this.displayName = "";
     this.dataType = "";
     makeAutoObservable(this);
   }
 }
 
-export class FieldAttribute {
+export class ColumnAttribute {
   attributeName: string;
   attributeValue: string;
   constructor() {

@@ -5,8 +5,8 @@ import { Solution } from "./solution";
 export class ViewModel {
   tableMetadata: TableMeta[] = [];
   selectedTables: TableMeta[] = [];
-  fieldColummns: string[] = [];
-  tableColumns: string[] = [];
+  columnAttributes: string[] = [];
+  tableAttributes: string[] = [];
   solutions: Solution[] = [];
   selectedSolution?: Solution;
 

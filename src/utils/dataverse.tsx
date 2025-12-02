@@ -1,4 +1,4 @@
-import { FieldMeta } from "../model/fieldMeta";
+import { ColumnMeta } from "../model/columnMeta";
 import { Solution } from "../model/solution";
 import { TableMeta } from "../model/tableMeta";
 
@@ -55,12 +55,12 @@ export class dvService {
     return tableMetaList;
   }
 
-  // Get fields metadata for a specific table
+  // Get columns metadata for a specific table
   // @todo: Need to swap back to toolbox code when fixed
   // @param table - The logical name of the table
-  // @returns Promise<FieldMeta[]> - A promise that resolves to an array of FieldMeta
-  async getFieldsMeta(table: string): Promise<FieldMeta[]> {
-    this.onLog(`Fetching field metadata for table: ${table}`, "info");
+  // @returns Promise<ColumnMeta[]> - A promise that resolves to an array of ColumnMeta
+  async getColumnsMeta(table: string): Promise<ColumnMeta[]> {
+    this.onLog(`Fetching column metadata for table: ${table}`, "info");
     if (!this.connection || !this.connection.isActive) {
       throw new Error("No connection available");
     }
@@ -68,36 +68,36 @@ export class dvService {
       //const meta = await this.dvApi.getEntityMetadata(table, true);
       const meta = await this.dvApi.queryData(`EntityDefinitions(LogicalName='${table}')/Attributes`);
 
-      console.log("Attributes fetched: ", meta.value);
+      //  console.log("Attributes fetched: ", meta.value);
 
-      const fieldMetaList: FieldMeta[] = (meta.value as any[]).map((attr: any) => {
+      const columnMetaList: ColumnMeta[] = (meta.value as any[]).map((attr: any) => {
         //   console.log("Attribute fetched: ", attr);
-        const fieldMeta = new FieldMeta();
-        fieldMeta.fieldName = attr.LogicalName;
-        fieldMeta.displayName = attr.DisplayName?.LocalizedLabels?.[0]?.Label || attr.LogicalName;
-        fieldMeta.dataType = attr.AttributeType || "";
-        fieldMeta.attributes = [];
+        const columnMeta = new ColumnMeta();
+        columnMeta.columnName = attr.LogicalName;
+        columnMeta.displayName = attr.DisplayName?.LocalizedLabels?.[0]?.Label || attr.LogicalName;
+        columnMeta.dataType = attr.AttributeType || "";
+        columnMeta.attributes = [];
         Object.keys(attr).forEach((prop) => {
           const value = attr[prop];
           if (typeof value === "function") return;
           try {
-            fieldMeta.attributes.push({
+            columnMeta.attributes.push({
               attributeName: prop,
               attributeValue: typeof value === "string" ? value : JSON.stringify(value),
             });
           } catch {
-            fieldMeta.attributes.push({
+            columnMeta.attributes.push({
               attributeName: prop,
               attributeValue: String(value),
             });
           }
         });
-        //console.log("FieldMeta created: ", fieldMeta);
-        return fieldMeta;
+        //console.log("ColumnMeta created: ", columnMeta);
+        return columnMeta;
       });
-      return fieldMetaList;
+      return columnMetaList;
     } catch (error) {
-      this.onLog(`Error fetching field metadata for table ${table}: ${(error as Error).message}`, "error");
+      this.onLog(`Error fetching column metadata for table ${table}: ${(error as Error).message}`, "error");
       throw error;
     }
   }
