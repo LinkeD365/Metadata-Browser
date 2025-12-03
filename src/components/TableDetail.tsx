@@ -194,13 +194,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             data={item.attributeValue}
           ></JSONPretty>
         );
-        try {
-          return <div>test{JSON.stringify(JSON.parse(item.attributeValue))}</div>;
-        } catch {
-          // if (JSON.parse(item.attributeValue)) return <div>{JSON.stringify(item.attributeValue)}</div>;
-          // else
-          return <div style={{ verticalAlign: "top" }}>{item.attributeValue}</div>;
-        }
       },
     }),
   ];
@@ -298,7 +291,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     window.toolboxAPI.utils.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
   function exportSolutionsClick(): void {
-    const title = ["Table: ", selTable.displayName, selTable.tableName];  
+    const title = ["Table:", selTable.displayName, selTable.tableName];  
     const headers = ["Solution Name", "Unique Name", "Version", "Is Managed", "Description", "Root Component Behavior"];
     const data = selTable.solutions.map((solution) => [
       solution.solutionName,

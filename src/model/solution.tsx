@@ -7,7 +7,7 @@ export class Solution {
   description?: string;
   version?: string;
   isManaged?: boolean;
-  subcomponents?:boolean;
+  subcomponents?: boolean;
   
   attributes: { attributeName: string; attributeValue: string }[];
 

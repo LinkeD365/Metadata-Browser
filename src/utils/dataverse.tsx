@@ -198,7 +198,7 @@ export class dvService {
       const keyMetaList: KeyMeta[] = (meta.value as any).map((key: any) => {
         console.log("Processing key: ", key);
         const keyMeta = new KeyMeta();
-        keyMeta.keyName = key.DisplayName.UserLocalizedLabel.Label;
+        keyMeta.keyName = key.DisplayName?.UserLocalizedLabel?.Label || key.LogicalName || "";
         keyMeta.attributes = [];
         Object.keys(key).forEach((prop) => {
           const value = key[prop];
@@ -299,7 +299,7 @@ export class dvService {
       return relationships;
     } catch (err) {
       this.onLog(
-        `Error fetching keys metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        `Error fetching relationship metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
         "error"
       );
       throw err;
