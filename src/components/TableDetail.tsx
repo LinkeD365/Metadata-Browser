@@ -38,6 +38,7 @@ import JSONPretty from "react-json-pretty";
 import { Keys } from "./Keys";
 import { Relationships } from "./Relationships";
 import { Privileges } from "./Privileges";
+import { Solutions } from "./Solutions";
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -296,16 +297,32 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     console.log("Attributes CSV Data:\n", csvString);
     window.toolboxAPI.utils.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
+  function exportSolutionsClick(): void {
+    const title = ["Table: ", selTable.displayName, selTable.tableName];  
+    const headers = ["Solution Name", "Unique Name", "Version", "Is Managed", "Description", "Root Component Behavior"];
+    const data = selTable.solutions.map((solution) => [
+      solution.solutionName,
+      solution.uniqueName,
+      solution.version,
+      solution.isManaged ? "Yes" : "No",
+      solution.description,
+      solution.subcomponents ? "Yes" : "No",
+    ]);
+    const rows = data;
+    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
+    console.log("Solutions CSV Data:\n", csvString);
+    window.toolboxAPI.utils.saveFile(`${selTable.displayName}_solutions_metadata.csv`, csvString);
+  }
 
   function exportPrivilegesClick(): void {
     const title = ["Table: ", selTable.displayName, selTable.tableName];
-    const headers = ["Privilege Name",...(selTable.privileges[0]?.attributes.map((attr) => attr.attributeName) || [])];
+    const headers = ["Privilege Name", ...(selTable.privileges[0]?.attributes.map((attr) => attr.attributeName) || [])];
     const data = selTable.privileges;
     const rows = data.map((priv) => [priv.privilegeName, ...priv.attributes.map((attr) => attr.attributeValue)]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
     console.log("Privileges CSV Data:\n", csvString);
     window.toolboxAPI.utils.saveFile(`${selTable.displayName}_privileges_metadata.csv`, csvString);
-  } 
+  }
 
   function exportRelationshipClick(): void {
     const title = ["Table: ", selTable.displayName, selTable.tableName, "Relationship Types: ", selectedValue];
@@ -436,6 +453,9 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <Tab id="Privileges" value="Privileges">
               Privileges
             </Tab>
+            <Tab id="Solutions" value="Solutions">
+              Solutions
+            </Tab>
             <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
@@ -481,6 +501,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                     icon={<ArrowExportUpRegular />}
                     onClick={exportPrivilegesClick}
                     disabled={selTable.privileges.length === 0}
+                  />
+                </div>
+              )}
+              {selectedValue === "Solutions" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  <Button
+                    icon={<ArrowExportUpRegular />}
+                    onClick={exportSolutionsClick}
+                    disabled={selTable.solutions.length === 0}
                   />
                 </div>
               )}
@@ -559,6 +588,16 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "Privileges" && (
               <Privileges
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
+              />
+            )}
+            {selectedValue === "Solutions" && (
+              <Solutions
                 connection={connection}
                 dvService={dvService}
                 isLoading={isLoading}

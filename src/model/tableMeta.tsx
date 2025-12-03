@@ -1,5 +1,6 @@
 import { makeAutoObservable } from "mobx";
 import { ColumnMeta } from "./columnMeta";
+import { Solution } from "./solution";
 
 export class TableMeta {
   tableName: string;
@@ -16,6 +17,7 @@ export class TableMeta {
   selectedRelationships: Set<string> = new Set<string>();
   relationshipSearch?: string;
   privileges: PrivilegeMeta[] = [];
+  solutions: Solution[] = [];
 
   constructor() {
     this.tableName = "";

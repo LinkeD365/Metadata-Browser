@@ -305,4 +305,71 @@ export class dvService {
       throw err;
     }
   }
+
+  async loadSolutionsForTable(selectedTable: TableMeta): Promise<Solution[]> {
+    if (!this.connection || !this.connection.isActive) {
+      throw new Error("No connection available");
+    }
+    try {
+      this.onLog(`Fetching solutions metadata for table: ${selectedTable.tableName}`, "info");
+
+      const fetchXml = `<fetch version="1.0" mapping="logical" >
+  <entity name="solution">
+    <attribute name="createdon" />
+    <attribute name="description" />
+    <attribute name="friendlyname" />
+    <attribute name="uniquename" />
+    <attribute name="ismanaged" />
+    <attribute name="version" />
+    <filter>
+      <condition attribute="isvisible" operator="eq" value="1" />
+    </filter>
+    <link-entity name="solutioncomponent" from="solutionid" to="solutionid" alias="sc" >
+    <attribute name="rootcomponentbehavior" />
+      <filter>
+        <condition attribute="objectid" operator="eq" value="${selectedTable.metaId}" />
+      </filter>
+    </link-entity>
+  </entity>
+</fetch>`;
+      console.log("FetchXML for solutions: ", fetchXml);
+      const meta = await this.dvApi.fetchXmlQuery(fetchXml);
+      console.log("Solutions fetched: ", meta);
+      const solutions: Solution[] = (meta.value as any).map((solution: any) => {
+        console.log("Processing Solution: ", solution);
+        const solutionMeta = new Solution();
+        solutionMeta.solutionName = solution.friendlyname;
+        solutionMeta.uniqueName = solution.uniquename;
+        solutionMeta.solutionId = solution.solutionid;
+        solutionMeta.description = solution.description;
+        solutionMeta.version = solution.version;
+        solutionMeta.isManaged = solution.ismanaged;
+        solutionMeta.subcomponents = solution["sc.rootcomponentbehavior"];
+        // solutionMeta.attributes = [];
+        // Object.keys(solution).forEach((prop) => {
+        //   const value = solution[prop];
+        //   if (typeof value === "function") return;
+        //   try {
+        //     solutionMeta.attributes.push({
+        //       attributeName: prop,
+        //       attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+        //     });
+        //   } catch {
+        //     solutionMeta.attributes.push({
+        //       attributeName: prop,
+        //       attributeValue: String(value),
+        //     });
+        //   }
+        // });
+        return solutionMeta;
+      });
+      return solutions;
+    } catch (err) {
+      this.onLog(
+        `Error fetching solutions metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error"
+      );
+      throw err;
+    }
+  }
 }
