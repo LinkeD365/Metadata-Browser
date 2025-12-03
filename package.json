@@ -1,11 +1,18 @@
 {
   "name": "pptb-metadata-browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
   "main": "index.html",
-  "author": "Power Platform ToolBox",
+  "contributors": [
+    "LinkeD365"
+  ],
   "license": "MIT",
+  "configurations": {
+    "repository": "https://github.com/LinkeD365/Metadata-Browser",
+    "website": "https://linked365.blog",
+    "readmeUrl": "https://github.com/LinkeD365/Metadata-Browser/blob/main/README.md"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
@@ -18,10 +25,12 @@
   },
   "dependencies": {
     "@fluentui/react-components": "^9.72.7",
+    "@fluentui/react-icons": "^2.0.315",
     "mobx": "^6.15.0",
     "mobx-react": "^9.2.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-json-pretty": "^2.2.0"
   },
   "devDependencies": {
     "@pptb/types": "^1.0.1",
