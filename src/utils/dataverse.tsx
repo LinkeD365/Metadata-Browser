@@ -1,6 +1,6 @@
 import { ColumnMeta } from "../model/columnMeta";
 import { Solution } from "../model/solution";
-import { KeyMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
+import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
 
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -221,6 +221,45 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching keys metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error"
+      );
+      throw err;
+    }
+  }
+
+  async loadPrivilegesMetadata(selectedTable: TableMeta): Promise<PrivilegeMeta[]> {
+    if (!this.connection || !this.connection.isActive) {
+      throw new Error("No connection available");
+    }
+    try {
+      this.onLog(`Fetching privileges metadata for table: ${selectedTable.tableName}`, "info");
+      const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Privileges`);
+      const keyMetaList: PrivilegeMeta[] = (meta.value as any).map((privilege: any) => {
+        console.log("Processing key: ", privilege);
+        const privMeta = new PrivilegeMeta();
+        privMeta.privilegeName = privilege.Name;
+        privMeta.attributes = [];
+        Object.keys(privilege).forEach((prop) => {
+          const value = privilege[prop];
+          if (typeof value === "function") return;
+          try {
+            privMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            privMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+        return privMeta;
+      });
+      return keyMetaList;
+    } catch (err) {
+      this.onLog(
+        `Error fetching privileges metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
         "error"
       );
       throw err;

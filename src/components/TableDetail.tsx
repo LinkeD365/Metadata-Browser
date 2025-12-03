@@ -37,6 +37,7 @@ import { Attribute, RelationshipAttribute, TableMeta } from "../model/tableMeta"
 import JSONPretty from "react-json-pretty";
 import { Keys } from "./Keys";
 import { Relationships } from "./Relationships";
+import { Privileges } from "./Privileges";
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -296,6 +297,16 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     window.toolboxAPI.utils.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
 
+  function exportPrivilegesClick(): void {
+    const title = ["Table: ", selTable.displayName, selTable.tableName];
+    const headers = ["Privilege Name",...(selTable.privileges[0]?.attributes.map((attr) => attr.attributeName) || [])];
+    const data = selTable.privileges;
+    const rows = data.map((priv) => [priv.privilegeName, ...priv.attributes.map((attr) => attr.attributeValue)]);
+    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
+    console.log("Privileges CSV Data:\n", csvString);
+    window.toolboxAPI.utils.saveFile(`${selTable.displayName}_privileges_metadata.csv`, csvString);
+  } 
+
   function exportRelationshipClick(): void {
     const title = ["Table: ", selTable.displayName, selTable.tableName, "Relationship Types: ", selectedValue];
     const headers = [
@@ -422,6 +433,9 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <Tab id="ManyToManyRelationship" value="ManyToManyRelationship">
               Many To Many
             </Tab>
+            <Tab id="Privileges" value="Privileges">
+              Privileges
+            </Tab>
             <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
@@ -458,6 +472,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                     icon={<ArrowExportUpRegular />}
                     onClick={exportRelationshipClick}
                     disabled={selTable.selectedRelationships.size === 0}
+                  />
+                </div>
+              )}
+              {selectedValue === "Privileges" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  <Button
+                    icon={<ArrowExportUpRegular />}
+                    onClick={exportPrivilegesClick}
+                    disabled={selTable.privileges.length === 0}
                   />
                 </div>
               )}
@@ -532,6 +555,16 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 showNotification={showNotification}
                 type="ManyToManyRelationship"
                 viewModel={viewModel}
+              />
+            )}
+            {selectedValue === "Privileges" && (
+              <Privileges
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
               />
             )}
           </div>

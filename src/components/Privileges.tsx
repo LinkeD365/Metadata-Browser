@@ -1,7 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
-import { KeyMeta, TableMeta } from "../model/tableMeta";
+import { PrivilegeMeta, TableMeta } from "../model/tableMeta";
 import {
   TableColumnDefinition,
   createTableColumn,
@@ -14,9 +14,10 @@ import {
   tokens,
   Spinner,
 } from "@fluentui/react-components";
+
 import JSONPretty from "react-json-pretty";
 
-interface KeysProps {
+interface PrivilegesProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
@@ -25,48 +26,48 @@ interface KeysProps {
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
-export const Keys = observer((props: KeysProps): React.JSX.Element => {
+export const Privileges = observer((props: PrivilegesProps): React.JSX.Element => {
   const { connection, dvService, onLog, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
-    onLog(`Loading keys for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Keys component: ", selectedTable);
-    if (selectedTable && selectedTable.keys?.length === 0) {
-      getKeysMeta();
+    onLog(`Loading privileges for table: ${selectedTable.tableName}`, "info");
+    console.log("Selected table in Privileges component: ", selectedTable);
+    if (selectedTable && selectedTable.privileges?.length === 0) {
+      getPrivileges();
     }
   }, [selectedTable]);
 
-  async function getKeysMeta() {
+  async function getPrivileges() {
     if (!connection || !connection.isActive) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
-    console.log("Fetching keys metadata for table: ", selectedTable.tableName);
+    console.log("Fetching privileges metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
     await dvService
-      .loadKeysMetadata(selectedTable)
-      .then((keys) => {
-        console.log("Keys metadata loaded: ", keys);
-        selectedTable.keys = keys;
-        onLog(`Loaded ${keys.length} keys for table: ${selectedTable.tableName}`, "success");
+      .loadPrivilegesMetadata(selectedTable)
+      .then((privileges) => {
+        console.log("Privileges metadata loaded: ", privileges);
+        selectedTable.privileges = privileges;
+        onLog(`Loaded ${privileges.length} privileges for table: ${selectedTable.tableName}`, "success");
       })
       .catch((error: { message: any }) => {
-        onLog(`Error loading keys for table ${selectedTable.tableName}: ${error.message}`, "error");
+        onLog(`Error loading privileges for table ${selectedTable.tableName}: ${error.message}`, "error");
       });
     setLoadingMeta(false);
     return;
   }
 
-  const createKeyAttributes = React.useMemo<TableColumnDefinition<KeyMeta>[]>(() => {
-    if (!selectedTable.keys || selectedTable.keys.length === 0) {
+  const createPrivilegeAttributes = React.useMemo<TableColumnDefinition<PrivilegeMeta>[]>(() => {
+    if (!selectedTable.privileges || selectedTable.privileges.length === 0) {
       return [];
     }
-    const cols = selectedTable.keys[0].attributes || [];
+    const cols = selectedTable.privileges[0].attributes || [];
     return cols.map((col) =>
-      createTableColumn<KeyMeta>({
+      createTableColumn<PrivilegeMeta>({
         columnId: col.attributeName,
         compare: (a, b) => {
           const aVal = a.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
@@ -99,23 +100,24 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         },
       })
     );
-  }, [selectedTable.keys.length]);
+  }, [selectedTable.privileges.length]);
 
-  const attributes: TableColumnDefinition<KeyMeta>[] = [
-    createTableColumn<KeyMeta>({
+  const attributes: TableColumnDefinition<PrivilegeMeta>[] = [
+    createTableColumn<PrivilegeMeta>({
       columnId: "name",
       compare: (a, b) => {
-        return a.keyName.localeCompare(b.keyName);
+        return a.privilegeName.localeCompare(b.privilegeName);
       },
       renderHeaderCell: () => {
-        return "Key Name";
+        return "Privilege Name";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.keyName}</div>;
+        return <div style={{ verticalAlign: "top" }}>{item.privilegeName}</div>;
       },
     }),
-    ...createKeyAttributes,
+    ...createPrivilegeAttributes,
   ];
+
   const columnSizingOptions = {
     name: {
       minWidth: 80,
@@ -126,15 +128,17 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   };
 
   if (loadingMeta) {
-    return <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Keys Metadata..." />;
+    return <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Privileges Metadata..." />;
   }
   return (
     <div>
-      {selectedTable.keys.length === 0 && <div style={{ textAlign: "center" }}>No Keys found for this table.</div>}
-      {selectedTable.keys.length > 0 && (
+      {selectedTable.privileges.length === 0 && (
+        <div style={{ textAlign: "center" }}>No Privileges found for this table.</div>
+      )}
+      {selectedTable.privileges.length > 0 && (
         <DataGrid
           columns={attributes}
-          items={selectedTable.keys}
+          items={selectedTable.privileges}
           columnSizingOptions={columnSizingOptions}
           sortable
           resizableColumns
@@ -155,9 +159,9 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
               {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
             </DataGridRow>
           </DataGridHeader>
-          <DataGridBody<KeyMeta>>
+          <DataGridBody<PrivilegeMeta>>
             {({ item, rowId }) => (
-              <DataGridRow<KeyMeta> key={rowId}>
+              <DataGridRow<PrivilegeMeta> key={rowId}>
                 {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
               </DataGridRow>
             )}
