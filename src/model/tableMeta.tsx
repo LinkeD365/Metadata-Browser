@@ -15,6 +15,7 @@ export class TableMeta {
   selectedColumns: Set<string> = new Set<string>();
   selectedRelationships: Set<string> = new Set<string>();
   relationshipSearch?: string;
+  privileges: PrivilegeMeta[] = [];
 
   constructor() {
     this.tableName = "";
@@ -65,6 +66,16 @@ export class RelationshipAttribute {
   constructor() {
     this.attributeName = "";
     this.type = "";
+    makeAutoObservable(this);
+  }
+}
+
+export class PrivilegeMeta {
+  privilegeName: string;
+  attributes: Attribute[] = [];
+
+  constructor() {
+    this.privilegeName = "";
     makeAutoObservable(this);
   }
 }
