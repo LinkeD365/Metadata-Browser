@@ -13,6 +13,8 @@ export class TableMeta {
   Relationships: RelationshipMeta[] = [];
   columnSearch?: string;
   selectedColumns: Set<string> = new Set<string>();
+  selectedRelationships: Set<string> = new Set<string>();
+  relationshipSearch?: string;
 
   constructor() {
     this.tableName = "";
@@ -51,6 +53,17 @@ export class RelationshipMeta {
 
   constructor() {
     this.relationshipName = "";
+    this.type = "";
+    makeAutoObservable(this);
+  }
+}
+
+export class RelationshipAttribute {
+  attributeName: string;
+  type: string;
+
+  constructor() {
+    this.attributeName = "";
     this.type = "";
     makeAutoObservable(this);
   }

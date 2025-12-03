@@ -29,10 +29,11 @@ import {
   TabList,
   TabValue,
   tokens,
+  Body1,
 } from "@fluentui/react-components";
 import { ArrowExportUpRegular, ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
 import { TableColumns } from "./TableColumns";
-import { Attribute, TableMeta } from "../model/tableMeta";
+import { Attribute, RelationshipAttribute, TableMeta } from "../model/tableMeta";
 import JSONPretty from "react-json-pretty";
 import { Keys } from "./Keys";
 import { Relationships } from "./Relationships";
@@ -53,9 +54,25 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const [selectedValue, setSelectedValue] = React.useState<TabValue>("details");
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedValue(data.value);
+    selTable.selectedRelationships = new Set<string>();
+    selTable.relationshipSearch = "";
   };
   const [isColumnEditOpen, setIsColumnEditOpen] = React.useState(false);
-  const [selectedItems, setSelectedItems] = React.useState<SelectionItemId[]>(viewModel.columnAttributes);
+  const [isRelationshipsColumnsOpen, setIsRelationshipsColumnsOpen] = React.useState(false);
+  const [selectedColumnAttributes, setSelectedColumnAttributes] = React.useState<SelectionItemId[]>(
+    viewModel.columnAttributes
+  );
+  const [selectedRelationshipAttributes, setSelectedRelationshipAttributes] = React.useState<SelectionItemId[]>([]);
+
+  React.useEffect(() => {
+    if (!isRelationshipsColumnsOpen) return;
+    const attrs = Array.isArray(viewModel.relationshipAttributes)
+      ? viewModel.relationshipAttributes
+          .filter((r) => r.type === selectedValue)
+          .map((r) => r.attributeName as SelectionItemId)
+      : [];
+    setSelectedRelationshipAttributes(attrs);
+  }, [isRelationshipsColumnsOpen, selectedValue, viewModel.relationshipAttributes]);
   const [selTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
   const [searchAttr, setSearchAttr] = React.useState<string>("");
 
@@ -70,10 +87,19 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     selTable.columnSearch = _searchQuery;
   };
   const debouncedSearchCols = React.useCallback(debounce(searchColumns, 300), []);
+  const searchRelationships = async (_searchQuery: string) => {
+    selTable.relationshipSearch = _searchQuery;
+  };
+  const debouncedSearchRels = React.useCallback(debounce(searchRelationships, 300), []);
 
   function columnSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     //console.log("Table search input: ", columnQuery);
     debouncedSearchCols(data.value ?? "");
+  }
+
+  function relationshipSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    //console.log("Table search input: ", columnQuery);
+    debouncedSearchRels(data.value ?? "");
   }
 
   const searchAttributes = async (_searchQuery: string) => {
@@ -95,6 +121,27 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           attr.attributeName != "DisplayName" &&
           attr.attributeName != "LogicalName"
       )
+      .map((attr) => (
+        <ListItem
+          key={attr.attributeName}
+          value={attr.attributeName}
+          aria-label={attr.attributeName}
+          checkmark={{ "aria-label": attr.attributeName }}
+        >
+          {attr.attributeName}
+        </ListItem>
+      ));
+  }
+
+  function relationshipAttributes() {
+    if (
+      selTable.Relationships.length === 0 ||
+      selTable.Relationships.filter((r) => r.type === selectedValue).length === 0
+    ) {
+      return [];
+    }
+    return selTable.Relationships.filter((r) => r.type === selectedValue)[0]
+      .attributes.filter((attr) => attr.attributeName != "SchemaName" && attr.attributeName != "RelationshipType")
       .map((attr) => (
         <ListItem
           key={attr.attributeName}
@@ -187,10 +234,36 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     setIsColumnEditOpen(true);
   }
 
+  function editRelationshipColumnsClick(): void {
+    setIsRelationshipsColumnsOpen(true);
+  }
+
   function saveTableColumnSelection(): void {
     setIsColumnEditOpen(false);
 
-    viewModel.columnAttributes = selectedItems.map((id) => id.toString());
+    viewModel.columnAttributes = selectedColumnAttributes.map((id) => id.toString());
+  }
+
+  function saveRelationshipAttrSelection(): void {
+    // remove existing relationship attributes whose type includes "many" (case-insensitive),
+    // then append the newly selected relationship attributes
+    viewModel.relationshipAttributes = (viewModel.relationshipAttributes || [])
+      .filter((r) => !(r.type && r.type == (selectedValue as string)))
+      .concat(
+        selectedRelationshipAttributes.map((id) => {
+          const relAttr = new RelationshipAttribute();
+          relAttr.attributeName = id.toString();
+          relAttr.type = selectedValue as string;
+          return relAttr;
+        })
+      );
+    // viewModel.relationshipAttributes = selectedRelationshipAttributes.map((id) => {
+    //   const relAttr = new RelationshipAttribute();
+    //   relAttr.attributeName = id.toString();
+    //   relAttr.type = selectedValue as string;
+    //   return relAttr;
+    // });
+    setIsRelationshipsColumnsOpen(false);
   }
 
   function exportTableDetailClick(): void {
@@ -223,6 +296,33 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     window.toolboxAPI.utils.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
 
+  function exportRelationshipClick(): void {
+    const title = ["Table: ", selTable.displayName, selTable.tableName, "Relationship Types: ", selectedValue];
+    const headers = [
+      "Relationship Name",
+      "Type",
+      ...viewModel.relationshipAttributes
+        .filter((attr) => attr.type === selectedValue)
+        .map((attr) => attr.attributeName),
+    ];
+    const data = selTable.Relationships.filter((t) =>
+      selTable.selectedRelationships ? selTable.selectedRelationships.has(t.relationshipName) : false
+    );
+    const rows = data.map((rel) => [
+      rel.relationshipName,
+      rel.type,
+      ...viewModel.relationshipAttributes
+        .filter((attr) => attr.type === selectedValue)
+        .map((attrName) => {
+          const attr = rel.attributes.find((a) => a.attributeName === attrName.attributeName);
+          return attr ? attr.attributeValue : "";
+        }),
+    ]);
+    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
+    console.log("Relationships CSV Data:\n", csvString);
+    window.toolboxAPI.utils.saveFile(`${selTable.displayName}_${selectedValue}_metadata.csv`, csvString);
+  }
+
   const columnDrawer = (
     <OverlayDrawer position="end" open={isColumnEditOpen} onOpenChange={(_, { open }) => setIsColumnEditOpen(open)}>
       <DrawerHeader>
@@ -241,8 +341,8 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       <DrawerBody>
         <List
           selectionMode="multiselect"
-          selectedItems={selectedItems}
-          onSelectionChange={(_, data) => setSelectedItems(data.selectedItems)}
+          selectedItems={selectedColumnAttributes}
+          onSelectionChange={(_, data) => setSelectedColumnAttributes(data.selectedItems)}
           aria-label="List of attributes to display for columns"
         >
           {columnAttributes()}
@@ -257,9 +357,50 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     </OverlayDrawer>
   );
 
+  const relationshipDrawer = (
+    <OverlayDrawer
+      position="end"
+      open={isRelationshipsColumnsOpen}
+      onOpenChange={(_, { open }) => setIsRelationshipsColumnsOpen(open)}
+    >
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsRelationshipsColumnsOpen(false)}
+            />
+          }
+        >
+          <Body1>{selectedValue} columns</Body1>
+        </DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <List
+          selectionMode="multiselect"
+          selectedItems={selectedRelationshipAttributes}
+          onSelectionChange={(_, data) => setSelectedRelationshipAttributes(data.selectedItems)}
+          aria-label="List of attributes to display for relationships"
+        >
+          {relationshipAttributes()}
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveRelationshipAttrSelection}>
+          Save
+        </Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
+
   return (
     <>
       {columnDrawer}
+      {relationshipDrawer}
       {selectedTable === table && (
         <div>
           <TabList selectedValue={selectedValue} onTabSelect={onTabSelect} size="small">
@@ -272,17 +413,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <Tab id="keys" value="keys">
               Keys
             </Tab>
-            <Tab id="oneToMany" value="oneToMany">
+            <Tab id="OneToManyRelationship" value="OneToManyRelationship">
               One To Many
             </Tab>
-            <Tab id="manyToOne" value="manyToOne">
+            <Tab id="ManyToOneRelationship" value="ManyToOneRelationship">
               Many To One
             </Tab>
-
-            <Tab id="manyToMany" value="manyToMany">
+            <Tab id="ManyToManyRelationship" value="ManyToManyRelationship">
               Many To Many
             </Tab>
-
             <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
@@ -303,7 +442,25 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                   />
                 </div>
               )}
-
+              {(selectedValue as string).includes("Relationship") && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  {selTable.Relationships.filter((rel) => rel.type === selectedValue).length > 0 && (
+                    <SearchBox
+                      size="small"
+                      placeholder="Search Relationships"
+                      aria-label="Search Name & Type"
+                      onChange={relationshipSearch}
+                      style={{ marginRight: "10px" }}
+                    />
+                  )}
+                  <Button icon={<ColumnEditRegular />} onClick={editRelationshipColumnsClick} />
+                  <Button
+                    icon={<ArrowExportUpRegular />}
+                    onClick={exportRelationshipClick}
+                    disabled={selTable.selectedRelationships.size === 0}
+                  />
+                </div>
+              )}
               {selectedValue === "details" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
                   <SearchBox
@@ -341,7 +498,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 showNotification={showNotification}
               />
             )}
-            {selectedValue === "oneToMany" && (
+            {selectedValue === "OneToManyRelationship" && (
               <Relationships
                 connection={connection}
                 dvService={dvService}
@@ -350,9 +507,10 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 onLog={onLog}
                 showNotification={showNotification}
                 type="OneToManyRelationship"
+                viewModel={viewModel}
               />
             )}
-            {selectedValue === "manyToOne" && (
+            {selectedValue === "ManyToOneRelationship" && (
               <Relationships
                 connection={connection}
                 dvService={dvService}
@@ -361,9 +519,10 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 onLog={onLog}
                 showNotification={showNotification}
                 type="ManyToOneRelationship"
+                viewModel={viewModel}
               />
             )}
-            {selectedValue === "manyToMany" && (
+            {selectedValue === "ManyToManyRelationship" && (
               <Relationships
                 connection={connection}
                 dvService={dvService}
@@ -372,6 +531,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 onLog={onLog}
                 showNotification={showNotification}
                 type="ManyToManyRelationship"
+                viewModel={viewModel}
               />
             )}
           </div>
