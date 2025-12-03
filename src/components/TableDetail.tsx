@@ -35,7 +35,7 @@ import { TableColumns } from "./TableColumns";
 import { Attribute, TableMeta } from "../model/tableMeta";
 import JSONPretty from "react-json-pretty";
 import { Keys } from "./Keys";
-import { OneToMany } from "./Relationships";
+import { Relationships } from "./Relationships";
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -342,7 +342,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
               />
             )}
             {selectedValue === "oneToMany" && (
-              <OneToMany
+              <Relationships
                 connection={connection}
                 dvService={dvService}
                 isLoading={isLoading}
@@ -353,7 +353,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
               />
             )}
             {selectedValue === "manyToOne" && (
-              <OneToMany
+              <Relationships
                 connection={connection}
                 dvService={dvService}
                 isLoading={isLoading}
@@ -364,7 +364,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
               />
             )}
             {selectedValue === "manyToMany" && (
-              <OneToMany
+              <Relationships
                 connection={connection}
                 dvService={dvService}
                 isLoading={isLoading}
