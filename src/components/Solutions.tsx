@@ -122,7 +122,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       renderCell: (item) => {
         return <div style={{ verticalAlign: "top" }}>{item.isManaged ? "Yes" : "No"}</div>;
       },
-    }), 
+    }),
     createTableColumn<Solution>({
       columnId: "subcomponents",
       compare: (a, b) => { 
@@ -134,8 +134,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       renderCell: (item) => {
         return <div style={{ verticalAlign: "top" }}>{item.subcomponents ? "Yes" : "No"}</div>;
       },
-    }) , 
-       
+    }),
   ];
 
   const columnSizingOptions = {
