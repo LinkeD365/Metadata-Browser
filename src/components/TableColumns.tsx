@@ -10,8 +10,11 @@ import {
   DataGridCell,
   DataGridHeader,
   DataGridHeaderCell,
+  DataGridProps,
   DataGridRow,
+  Spinner,
   TableColumnDefinition,
+  TableRowId,
   tokens,
 } from "@fluentui/react-components";
 import { ColumnMeta } from "../model/columnMeta";
@@ -32,17 +35,24 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   const [selectedTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
+  const [selectedColumns, setSelectedColumns] = React.useState<Set<TableRowId>>();
+  const onSelectionChange: DataGridProps["onSelectionChange"] = (_e, data) => {
+    console.log(data);
+    setSelectedColumns(data.selectedItems);
+    selectedTable.selectedColumns = new Set<string>(Array.from(data.selectedItems) as string[]);
+  };
+
   const filteredColumns: ColumnMeta[] = React.useMemo(() => {
-    if (!selectedTable || selectedTable.searchQuery?.trim() === "") {
+    if (!selectedTable || selectedTable.columnSearch?.trim() === "") {
       return selectedTable.columns;
     } else
       return selectedTable.columns.filter(
         (t) =>
-          t.displayName.toLowerCase().includes(selectedTable.searchQuery?.toLowerCase() ?? "") ||
-          t.columnName.toLowerCase().includes(selectedTable.searchQuery?.toLowerCase() ?? "") ||
-          t.dataType.toLowerCase().includes(selectedTable.searchQuery?.toLowerCase() ?? "")
+          t.displayName.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? "") ||
+          t.columnName.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? "") ||
+          t.dataType.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? "")
       );
-  }, [selectedTable.searchQuery, selectedTable.columns]);
+  }, [selectedTable.columnSearch, selectedTable.columns]);
 
   async function getColumnsMeta() {
     if (!connection || !connection.isActive) {
@@ -81,24 +91,22 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   }, [selectedTable, table]);
 
   function createColumnsFromSelColumns(): TableColumnDefinition<ColumnMeta>[] {
-    return viewModel.columnAttributes
-      .filter((col) => col)
-      .map((col) =>
-        createTableColumn<ColumnMeta>({
-          columnId: col,
-          compare: (a, b) => {
-            const aVal = a.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
-            const bVal = b.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
-            return aVal.localeCompare(bVal);
-          },
-          renderHeaderCell: () => {
-            return col;
-          },
-          renderCell: (item) => {
-            return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
-          },
-        })
-      );
+    return viewModel.columnAttributes.map((col) =>
+      createTableColumn<ColumnMeta>({
+        columnId: col,
+        compare: (a, b) => {
+          const aVal = a.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
+          const bVal = b.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
+          return aVal.localeCompare(bVal);
+        },
+        renderHeaderCell: () => {
+          return col;
+        },
+        renderCell: (item) => {
+          return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+        },
+      })
+    );
   }
 
   const attributes: TableColumnDefinition<ColumnMeta>[] = [
@@ -140,14 +148,47 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     }),
     ...createColumnsFromSelColumns(),
   ];
-
+  const columnSizingOptions = {
+    name: {
+      minWidth: 80,
+      maxWidth: 400,
+      idealWidth: 120,
+      defaultWidth: 120,
+    },
+    logical: {
+      defaultWidth: 80,
+      minWidth: 30,
+      idealWidth: 120,
+    },
+    details: {
+      defaultWidth: 30,
+      minWidth: 30,
+      maxWidth: 30,
+      idealWidth: 30,
+    },
+  };
   return (
     <>
       {loadingMeta ? (
-        "Loading..."
+        <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Columns Metadata..." />
       ) : (
         <>
-          <DataGrid columns={attributes} items={filteredColumns} sortable>
+          <DataGrid
+            columns={attributes}
+            items={filteredColumns}
+            sortable
+            subtleSelection
+            selectionMode="multiselect"
+            selectionAppearance="neutral"
+            selectedItems={selectedColumns}
+            getRowId={(item: ColumnMeta) => item.columnName}
+            onSelectionChange={onSelectionChange}
+            columnSizingOptions={columnSizingOptions}
+            resizableColumns
+            resizableColumnsOptions={{
+              autoFitColumns: false,
+            }}
+          >
             <DataGridHeader
               style={{
                 position: "sticky",

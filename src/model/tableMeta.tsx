@@ -4,25 +4,54 @@ import { ColumnMeta } from "./columnMeta";
 export class TableMeta {
   tableName: string;
   displayName: string;
+  metaId: string;
 
   columns: ColumnMeta[] = [];
-  attributes: TableAttribute[] = [];
-  searchQuery?: string;
+  attributes: Attribute[] = [];
+  keys: KeyMeta[] = [];
+
+  Relationships: RelationshipMeta[] = [];
+  columnSearch?: string;
+  selectedColumns: Set<string> = new Set<string>();
 
   constructor() {
     this.tableName = "";
     this.displayName = "";
+    this.metaId = "";
 
     makeAutoObservable(this);
   }
 }
 
-export class TableAttribute {
+export class Attribute {
   attributeName: string;
   attributeValue: string;
   constructor() {
     this.attributeName = "";
     this.attributeValue = "";
+    makeAutoObservable(this);
+  }
+}
+
+export class KeyMeta {
+  keyName: string;
+
+  attributes: Attribute[] = [];
+
+  constructor() {
+    this.keyName = "";
+    makeAutoObservable(this);
+  }
+}
+
+export class RelationshipMeta {
+  relationshipName: string;
+  type: string;
+  attributes: Attribute[] = [];
+
+  constructor() {
+    this.relationshipName = "";
+    this.type = "";
     makeAutoObservable(this);
   }
 }
