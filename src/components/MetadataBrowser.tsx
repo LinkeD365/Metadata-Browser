@@ -32,8 +32,8 @@ import {
   SelectionItemId,
   SelectTabData,
   SelectTabEvent,
+  Spinner,
   SplitButton,
-  Text,
   Tab,
   TableColumnDefinition,
   TableRowId,
@@ -206,13 +206,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             return aVal.localeCompare(bVal);
           },
           renderHeaderCell: () => {
-            return (
-              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                
-                  {col}
-                
-              </div>
-            );
+            return <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col}</div>;
           },
           renderCell: (item) => {
             return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
@@ -249,7 +243,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function exportTablesClick(): void {
-    console.log("Export Tables Clicked", selectedTables);
     if (selectedTables === undefined || selectedTables.size === 0) {
       window.toolboxAPI.utils.showNotification({
         title: "No Tables Selected",
@@ -272,7 +265,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
     console.log("CSV Data:\n", csvString);
-    window.toolboxAPI.utils.saveFile("table_metadata.csv", csvString);
+    window.toolboxAPI.utils.saveFile("tables_metadata.csv", csvString);
     // const csvString = [
     //   ["Header1", "Header2", "Header3"], // Specify your headers here
     //   ...data.map((item) => [item.field1, item.field2, item.field3]), // Map your data fields accordingly
@@ -585,15 +578,15 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     <Menu positioning="below-end">
       <MenuTrigger disableButtonEnhancement>
         {(triggerProps: MenuButtonProps) => (
-          <SplitButton menuButton={triggerProps} primaryActionButton={{ onClick: getAllTableMeta }}>
-            All Tables
+          <SplitButton menuButton={triggerProps} primaryActionButton={{ onClick: () => setIsSolutionSelOpen(true) }}>
+            Select a Solution
           </SplitButton>
         )}
       </MenuTrigger>
 
       <MenuPopover>
         <MenuList>
-          <MenuItem onClick={() => setIsSolutionSelOpen(true)}>Select a Solution</MenuItem>
+          <MenuItem onClick={getAllTableMeta}>All Tables</MenuItem>
         </MenuList>
       </MenuPopover>
     </Menu>
@@ -648,9 +641,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         </TabList>
         <div>
           {loadingMeta ? (
-            "Loading Metadata..."
+            <Spinner style={{height: "300px"}} size="extra-large" label="Loading Metadata..." />
           ) : !viewModel.tableMetadata || viewModel.tableMetadata.length === 0 ? (
-            "Select All Tables or a Solution to load metadata."
+            <div style={{ textAlign: "center" }}>Select a Solution or All Tables to load metadata.</div>
           ) : (
             <>
               {selectedTab === "tables" && <TableDataGrid />}

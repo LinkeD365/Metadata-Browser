@@ -30,10 +30,12 @@ import {
   TabValue,
   tokens,
 } from "@fluentui/react-components";
-import { ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
+import { ArrowExportUpRegular, ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
 import { TableColumns } from "./TableColumns";
-import { TableAttribute, TableMeta } from "../model/tableMeta";
+import { Attribute, TableMeta } from "../model/tableMeta";
 import JSONPretty from "react-json-pretty";
+import { Keys } from "./Keys";
+import { OneToMany } from "./Relationships";
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -65,7 +67,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     };
   };
   const searchColumns = async (_searchQuery: string) => {
-    selTable.searchQuery = _searchQuery;
+    selTable.columnSearch = _searchQuery;
   };
   const debouncedSearchCols = React.useCallback(debounce(searchColumns, 300), []);
 
@@ -105,15 +107,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       ));
   }
 
-  const filteredAttributes: TableAttribute[] = React.useMemo(() => {
+  const filteredAttributes: Attribute[] = React.useMemo(() => {
     if (!selTable || searchAttr.trim() === "") {
       return selTable.attributes;
     }
     return selTable.attributes.filter((attr) => attr.attributeName.toLowerCase().includes(searchAttr.toLowerCase()));
   }, [selTable, searchAttr]);
 
-  const attributes: TableColumnDefinition<TableAttribute>[] = [
-    createTableColumn<TableAttribute>({
+  const attributes: TableColumnDefinition<Attribute>[] = [
+    createTableColumn<Attribute>({
       columnId: "name",
       compare: (a, b) => {
         return a.attributeName.localeCompare(b.attributeName);
@@ -125,7 +127,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         return <div style={{ verticalAlign: "top" }}>{item.attributeName}</div>;
       },
     }),
-    createTableColumn<TableAttribute>({
+    createTableColumn<Attribute>({
       columnId: "value",
       compare: (a, b) => {
         return a.attributeValue.localeCompare(b.attributeValue);
@@ -170,9 +172,9 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
           </DataGridRow>
         </DataGridHeader>
-        <DataGridBody<TableAttribute>>
+        <DataGridBody<Attribute>>
           {({ item, rowId }) => (
-            <DataGridRow<TableAttribute> key={rowId}>
+            <DataGridRow<Attribute> key={rowId}>
               {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
             </DataGridRow>
           )}
@@ -189,6 +191,36 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     setIsColumnEditOpen(false);
 
     viewModel.columnAttributes = selectedItems.map((id) => id.toString());
+  }
+
+  function exportTableDetailClick(): void {
+    const title = ["Table: ", selTable.displayName, selTable.tableName];
+    const headers = ["Attribute Name", "Value"];
+    const rows = selTable.attributes.map((attr) => [attr.attributeName, attr.attributeValue]);
+    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
+    console.log("Attributes CSV Data:\n", csvString);
+    window.toolboxAPI.utils.saveFile(`${selTable.displayName}_metadata.csv`, csvString);
+  }
+
+  function exportColumnsClick(): void {
+    const title = ["Table: ", selTable.displayName, selTable.tableName];
+    const headers = ["Column Name", "Logical Name", "Type", ...viewModel.columnAttributes];
+
+    const data = selTable.columns.filter((t) =>
+      selTable.selectedColumns ? selTable.selectedColumns.has(t.columnName) : false
+    );
+    const rows = data.map((col) => [
+      col.displayName,
+      col.columnName,
+      col.dataType,
+      ...viewModel.columnAttributes.map((attrName) => {
+        const attr = col.attributes.find((a) => a.attributeName === attrName);
+        return attr ? attr.attributeValue : "";
+      }),
+    ]);
+    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
+    console.log("Attributes CSV Data:\n", csvString);
+    window.toolboxAPI.utils.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
 
   const columnDrawer = (
@@ -237,6 +269,20 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <Tab id="columns" value="columns">
               Columns
             </Tab>
+            <Tab id="keys" value="keys">
+              Keys
+            </Tab>
+            <Tab id="oneToMany" value="oneToMany">
+              One To Many
+            </Tab>
+            <Tab id="manyToOne" value="manyToOne">
+              Many To One
+            </Tab>
+
+            <Tab id="manyToMany" value="manyToMany">
+              Many To Many
+            </Tab>
+
             <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
@@ -250,6 +296,11 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                     />
                   )}
                   <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
+                  <Button
+                    icon={<ArrowExportUpRegular />}
+                    onClick={exportColumnsClick}
+                    disabled={selTable.selectedColumns.size === 0}
+                  />
                 </div>
               )}
 
@@ -262,6 +313,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                     onChange={attributeSearch}
                     style={{ marginRight: "10px" }}
                   />
+                  <Button icon={<ArrowExportUpRegular />} onClick={exportTableDetailClick} />
                 </div>
               )}
             </div>
@@ -277,6 +329,49 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 table={table}
                 onLog={onLog}
                 showNotification={showNotification}
+              />
+            )}
+            {selectedValue === "keys" && (
+              <Keys
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
+              />
+            )}
+            {selectedValue === "oneToMany" && (
+              <OneToMany
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
+                type="OneToManyRelationship"
+              />
+            )}
+            {selectedValue === "manyToOne" && (
+              <OneToMany
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
+                type="ManyToOneRelationship"
+              />
+            )}
+            {selectedValue === "manyToMany" && (
+              <OneToMany
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
+                type="ManyToManyRelationship"
               />
             )}
           </div>

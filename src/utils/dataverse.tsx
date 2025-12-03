@@ -1,6 +1,6 @@
 import { ColumnMeta } from "../model/columnMeta";
 import { Solution } from "../model/solution";
-import { TableMeta } from "../model/tableMeta";
+import { KeyMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
 
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -34,6 +34,7 @@ export class dvService {
       const tableMeta = new TableMeta();
       tableMeta.tableName = String(table.LogicalName);
       tableMeta.displayName = table.DisplayName?.LocalizedLabels?.[0]?.Label || table.LogicalName;
+      tableMeta.metaId = table.MetadataId || "";
       tableMeta.attributes = [];
       Object.keys(table).forEach((prop) => {
         const value = table[prop];
@@ -150,6 +151,7 @@ export class dvService {
           const tm = new TableMeta();
           tm.tableName = src?.LogicalName || String(objectId);
           tm.displayName = src?.DisplayName?.LocalizedLabels?.[0]?.Label || tm.tableName;
+          tm.metaId = src?.MetadataId || "";
           tm.attributes = [];
 
           Object.keys(src || {}).forEach((prop) => {
@@ -182,6 +184,85 @@ export class dvService {
       return solutionTables;
     } catch (err) {
       this.onLog(`Error fetching solution tables for ${solutionUniqueName}: ${(err as Error).message}`, "error");
+      throw err;
+    }
+  }
+
+  async loadKeysMetadata(selectedTable: TableMeta): Promise<KeyMeta[]> {
+    if (!this.connection || !this.connection.isActive) {
+      throw new Error("No connection available");
+    }
+    try {
+      this.onLog(`Fetching keys metadata for table: ${selectedTable.tableName}`, "info");
+      const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Keys`);
+      const keyMetaList: KeyMeta[] = (meta.value as any).map((key: any) => {
+        console.log("Processing key: ", key);
+        const keyMeta = new KeyMeta();
+        keyMeta.keyName = key.DisplayName.UserLocalizedLabel.Label;
+        keyMeta.attributes = [];
+        Object.keys(key).forEach((prop) => {
+          const value = key[prop];
+          if (typeof value === "function") return;
+          try {
+            keyMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            keyMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+        return keyMeta;
+      });
+      return keyMetaList;
+    } catch (err) {
+      this.onLog(
+        `Error fetching keys metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error"
+      );
+      throw err;
+    }
+  }
+
+  async loadRelationshipMeta(selectedTable: TableMeta, type: string): Promise<RelationshipMeta[]> {
+    if (!this.connection || !this.connection.isActive) {
+      throw new Error("No connection available");
+    }
+    try {
+      this.onLog(`Fetching relationships metadata for table: ${selectedTable.tableName} type: ${type}`, "info");
+      const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/${type}s`);
+      const relationships: RelationshipMeta[] = (meta.value as any).map((relationship: any) => {
+        console.log("Processing Relationship: ", relationship);
+        const relationshipMeta = new RelationshipMeta();
+        relationshipMeta.relationshipName = relationship.SchemaName;
+        relationshipMeta.type = type;
+        relationshipMeta.attributes = [];
+        Object.keys(relationship).forEach((prop) => {
+          const value = relationship[prop];
+          if (typeof value === "function") return;
+          try {
+            relationshipMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            relationshipMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+        return relationshipMeta;
+      });
+      return relationships;
+    } catch (err) {
+      this.onLog(
+        `Error fetching keys metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error"
+      );
       throw err;
     }
   }
