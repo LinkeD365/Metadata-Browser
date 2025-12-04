@@ -25,4 +25,4 @@ jobs:
     - name: Build
       run: |
         npm install
-        tsc && vite build
+        npm run build
