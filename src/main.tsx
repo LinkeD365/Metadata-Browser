@@ -2,11 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import {
-  FluentProvider,
-  webDarkTheme,
-  webLightTheme,
-} from "@fluentui/react-components";
 
 // Ensure DOM is ready and root element exists
 const rootElement = document.getElementById("root");
@@ -18,14 +13,10 @@ if (rootElement && !rootElement.hasAttribute("data-reactroot-initialized")) {
     document.body.setAttribute("data-theme", theme);
     createRoot(rootElement).render(
       <StrictMode>
-        <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme}>
-          <App />
-        </FluentProvider>
+        <App />
       </StrictMode>
     );
   })();
 } else if (!rootElement) {
-  console.error(
-    'Root element not found. Make sure the HTML contains <div id="root"></div>'
-  );
+  console.error('Root element not found. Make sure the HTML contains <div id="root"></div>');
 }
