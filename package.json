@@ -8,13 +8,17 @@
     "type": "git"
   },
   "contributors": [
-    "LinkeD365"
+    {
+      "name": "LinkeD365",
+      "url": "https://github.com/LinkeD365"
+    }
   ],
   "license": "MIT",
   "configurations": {
     "repository": "https://github.com/LinkeD365/Metadata-Browser",
     "website": "https://linked365.blog",
-    "readmeUrl": "https://github.com/LinkeD365/Metadata-Browser/blob/main/README.md"
+    "readmeUrl": "https://github.com/LinkeD365/Metadata-Browser/blob/main/README.md",
+    "iconUrl": "https://linked365.blog/linked365Logo.png"
   },
   "engines": {
     "node": ">=18.0.0"
