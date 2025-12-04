@@ -31,6 +31,6 @@ jobs:
           
     - name: Build
       run: |
-        npm install
+        npm install -g npm@latest
         npm run build
         npm publish
