@@ -618,7 +618,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
                     style={{ margin: "2px" }}
                   />
                 )}
-                {tableQuery}
                 {viewModel.selectedSolution && (
                   <Label size="small" style={{ padding: "2px 2px" }}>
                     Solution: {viewModel.selectedSolution?.solutionName}{" "}

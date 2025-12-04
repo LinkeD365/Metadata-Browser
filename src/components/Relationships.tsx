@@ -55,10 +55,10 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
       .then((relationships) => {
         console.log("Relationships metadata loaded: ", relationships);
         selectedTable.Relationships.push(...relationships);
-        onLog(`Loaded ${relationships.length} keys for table: ${selectedTable.tableName}`, "success");
+        onLog(`Loaded ${relationships.length} relationships for table: ${selectedTable.tableName}`, "success");
       })
       .catch((error: { message: any }) => {
-        onLog(`Error loading keys for table ${selectedTable.tableName}: ${error.message}`, "error");
+        onLog(`Error loading relationships for table ${selectedTable.tableName}: ${error.message}`, "error");
       });
     setLoadingMeta(false);
     return;
