@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  useConnection,
-  useEventLog,
-  useToolboxEvents,
-} from "./hooks/useToolboxAPI";
+import { useConnection, useEventLog, useToolboxEvents } from "./hooks/useToolboxAPI";
 import { ViewModel } from "./model/ViewModel";
 import { dvService } from "./utils/dataverse";
 import { MetadataBrowser } from "./components/MetadataBrowser";
+import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-components";
 
 function App() {
   const { connection, isLoading, refreshConnection } = useConnection();
-  const {  addLog  } = useEventLog();
+  const { addLog } = useEventLog();
+  const [theme, setTheme] = useState<string>("light");
 
   // Handle platform events
   const handleEvent = useCallback(
@@ -30,10 +28,33 @@ function App() {
         case "terminal:error":
           // Terminal events handled by dedicated components
           break;
+        case "theme:changed":
+          console.log("Theme changed to:", _data.data.theme);
+          setTheme(_data.data.theme);
+          break;
       }
     },
     [refreshConnection]
   );
+
+  window.toolboxAPI.events.on((event: unknown, payload: any) => {
+  console.log('Event:', payload?.event, 'Data:', payload?.data);
+  console.log('Event', event);
+  switch (payload?.event) {
+    case 'connection:updated':
+      refreshConnection();
+      break;
+    // case 'connection:activated':
+    //   handleConnectionActivated(payload.data);
+    //   break;
+    case 'theme:changed':
+    case 'settings:updated':
+      if (payload?.data && typeof payload.data.theme === "string") {
+        setTheme(payload.data.theme);
+      }
+      break;
+  }
+});
 
   useToolboxEvents(handleEvent);
 
@@ -41,6 +62,13 @@ function App() {
   useEffect(() => {
     addLog("Metadata browser loaded", "success");
   }, [addLog]);
+
+  useEffect(() => {
+    (async () => {
+      const currentTheme = await window.toolboxAPI.utils.getCurrentTheme();
+      setTheme(currentTheme);
+    })();
+  }, []);
 
   const [viewModel] = useState(() => new ViewModel());
   const dvSvc = useMemo(
@@ -54,6 +82,7 @@ function App() {
   );
   return (
     <>
+    <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme}>
       <MetadataBrowser
         connection={connection}
         viewModel={viewModel}
@@ -61,8 +90,13 @@ function App() {
         onLog={addLog}
         isLoading={isLoading}
       />
+      </FluentProvider>
     </>
   );
 }
 
 export default App;
+function applyTheme(theme: any) {
+  throw new Error("Function not implemented.");
+}
+
