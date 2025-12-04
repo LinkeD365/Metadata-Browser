@@ -3,7 +3,10 @@
   "version": "0.1.11",
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
-  "repository.url": "https://github.com/LinkeD365/Metadata-Browser",
+  "repository": {
+    "url": "https://github.com/LinkeD365/Metadata-Browser",
+    "type": "git"
+  },
   "contributors": [
     "LinkeD365"
   ],
