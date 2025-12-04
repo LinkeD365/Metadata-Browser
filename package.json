@@ -1,6 +1,6 @@
 {
   "name": "pptb-metadata-browser",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
   "main": "index.html",
