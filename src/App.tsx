@@ -30,7 +30,7 @@ function App() {
           break;
         case "theme:changed":
         case "settings:updated":
-          console.log("Theme changed to:", _data?.data?.theme);
+          console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
           break;
@@ -71,7 +71,7 @@ function App() {
         console.error("Failed to load default settings:", error);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- viewModel is a stable reference that doesn't need to trigger re-runs
   }, []);
   const dvSvc = useMemo(
     () =>
