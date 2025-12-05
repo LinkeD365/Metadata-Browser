@@ -234,21 +234,26 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }
 
   function saveColumnAttributes(): void {
-    setIsColumnEditOpen(false);
-
     viewModel.columnAttributes = selectedColumnAttributes.map((id) => id.toString());
+    setIsColumnEditOpen(false);
   }
 
-    function saveColumnAttributesDefaults(): void {
-    setIsColumnEditOpen(false);
-
-    viewModel.columnAttributes = selectedColumnAttributes.map((id) => id.toString());
-        window.toolboxAPI.settings.setSetting("defaultColumnAttributes", viewModel.columnAttributes.toString());
-    window.toolboxAPI.utils.showNotification({
-      title: "Default Saved",
-      body: "Default column attributes have been saved.",
-      type: "success",
-    });
+  async function saveColumnAttributesDefaults(): Promise<void> {
+    saveColumnAttributes();
+    try {
+      await window.toolboxAPI.settings.setSetting("defaultColumnAttributes", viewModel.columnAttributes.toString());
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: "Default column attributes have been saved.",
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: "Failed to save default column attributes.",
+        type: "error",
+      });
+    }
   }
 
   function saveRelationshipAttrSelection(): void {
@@ -386,7 +391,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveColumnAttributes}>
           Apply
         </Button>
-        <Button style={{ marginLeft: "auto" }} onClick={saveColumnAttributesDefaults}>
+        <Button onClick={saveColumnAttributesDefaults}>
           Set Default
         </Button>
       </DrawerFooter>

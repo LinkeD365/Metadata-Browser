@@ -12,7 +12,7 @@ function App() {
 
   // Handle platform events
   const handleEvent = useCallback(
-    (event: string, _data: any) => {
+    async (event: string, _data: any) => {
       switch (event) {
         case "connection:updated":
         case "connection:created":
@@ -29,33 +29,15 @@ function App() {
           // Terminal events handled by dedicated components
           break;
         case "theme:changed":
-          console.log("Theme changed to:", _data.data.theme);
-          setTheme(_data.data.theme);
+        case "settings:updated":
+          console.log("Theme changed to:", _data?.data?.theme);
+          const theme = await window.toolboxAPI.utils.getCurrentTheme();
+          setTheme(theme);
           break;
       }
     },
     [refreshConnection]
   );
-
-  window.toolboxAPI.events.on(async (event: unknown, payload: any) => {
-    console.log("Event:", payload?.event, "Data:", payload?.data);
-    console.log("Event", event);
-    switch (payload?.event) {
-      case "connection:updated":
-        refreshConnection();
-        break;
-      // case 'connection:activated':
-      //   handleConnectionActivated(payload.data);
-      //   break;
-      case "theme:changed":
-      case "settings:updated":
-        if (payload?.data && typeof payload.data.theme === "string") {
-          const theme = await window.toolboxAPI.utils.getCurrentTheme();
-          setTheme(theme);
-        }
-        break;
-    }
-  });
 
   useToolboxEvents(handleEvent);
 
@@ -75,19 +57,22 @@ function App() {
 
   useEffect(() => {
     console.log("Loading default table columns from settings");
-    if (viewModel) {
-      window.toolboxAPI.settings.getSetting("defaultTableColumns").then((savedColumns: string | null) => {
+    (async () => {
+      try {
+        const savedColumns = await window.toolboxAPI.settings.getSetting("defaultTableColumns");
         if (savedColumns) {
-          viewModel.tableAttributes = savedColumns.split(",").map((col) => col.trim());
+          viewModel.tableAttributes = savedColumns.split(",").map((col: string) => col.trim());
         }
-      });
-      window.toolboxAPI.settings.getSetting("defaultColumnAttributes").then((savedColAttribs: string | null) => {
+        const savedColAttribs = await window.toolboxAPI.settings.getSetting("defaultColumnAttributes");
         if (savedColAttribs) {
-          viewModel.columnAttributes = savedColAttribs.split(",").map((col) => col.trim());
+          viewModel.columnAttributes = savedColAttribs.split(",").map((col: string) => col.trim());
         }
-      });
-    }
-  }, [viewModel]);
+      } catch (error) {
+        console.error("Failed to load default settings:", error);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const dvSvc = useMemo(
     () =>
       new dvService({
