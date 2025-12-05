@@ -233,10 +233,22 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     setIsRelationshipsColumnsOpen(true);
   }
 
-  function saveTableColumnSelection(): void {
+  function saveColumnAttributes(): void {
     setIsColumnEditOpen(false);
 
     viewModel.columnAttributes = selectedColumnAttributes.map((id) => id.toString());
+  }
+
+    function saveColumnAttributesDefaults(): void {
+    setIsColumnEditOpen(false);
+
+    viewModel.columnAttributes = selectedColumnAttributes.map((id) => id.toString());
+        window.toolboxAPI.settings.setSetting("defaultColumnAttributes", viewModel.columnAttributes.toString());
+    window.toolboxAPI.utils.showNotification({
+      title: "Default Saved",
+      body: "Default column attributes have been saved.",
+      type: "success",
+    });
   }
 
   function saveRelationshipAttrSelection(): void {
@@ -291,7 +303,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     window.toolboxAPI.utils.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
   function exportSolutionsClick(): void {
-    const title = ["Table:", selTable.displayName, selTable.tableName];  
+    const title = ["Table:", selTable.displayName, selTable.tableName];
     const headers = ["Solution Name", "Unique Name", "Version", "Is Managed", "Description", "Root Component Behavior"];
     const data = selTable.solutions.map((solution) => [
       solution.solutionName,
@@ -371,8 +383,11 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
-          Save
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveColumnAttributes}>
+          Apply
+        </Button>
+        <Button style={{ marginLeft: "auto" }} onClick={saveColumnAttributesDefaults}>
+          Set Default
         </Button>
       </DrawerFooter>
     </OverlayDrawer>

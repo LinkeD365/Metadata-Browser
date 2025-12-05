@@ -37,24 +37,25 @@ function App() {
     [refreshConnection]
   );
 
-  window.toolboxAPI.events.on((event: unknown, payload: any) => {
-  console.log('Event:', payload?.event, 'Data:', payload?.data);
-  console.log('Event', event);
-  switch (payload?.event) {
-    case 'connection:updated':
-      refreshConnection();
-      break;
-    // case 'connection:activated':
-    //   handleConnectionActivated(payload.data);
-    //   break;
-    case 'theme:changed':
-    case 'settings:updated':
-      if (payload?.data && typeof payload.data.theme === "string") {
-        setTheme(payload.data.theme);
-      }
-      break;
-  }
-});
+  window.toolboxAPI.events.on(async (event: unknown, payload: any) => {
+    console.log("Event:", payload?.event, "Data:", payload?.data);
+    console.log("Event", event);
+    switch (payload?.event) {
+      case "connection:updated":
+        refreshConnection();
+        break;
+      // case 'connection:activated':
+      //   handleConnectionActivated(payload.data);
+      //   break;
+      case "theme:changed":
+      case "settings:updated":
+        if (payload?.data && typeof payload.data.theme === "string") {
+          const theme = await window.toolboxAPI.utils.getCurrentTheme();
+          setTheme(theme);
+        }
+        break;
+    }
+  });
 
   useToolboxEvents(handleEvent);
 
@@ -71,6 +72,22 @@ function App() {
   }, []);
 
   const [viewModel] = useState(() => new ViewModel());
+
+  useEffect(() => {
+    console.log("Loading default table columns from settings");
+    if (viewModel) {
+      window.toolboxAPI.settings.getSetting("defaultTableColumns").then((savedColumns: string | null) => {
+        if (savedColumns) {
+          viewModel.tableAttributes = savedColumns.split(",").map((col) => col.trim());
+        }
+      });
+      window.toolboxAPI.settings.getSetting("defaultColumnAttributes").then((savedColAttribs: string | null) => {
+        if (savedColAttribs) {
+          viewModel.columnAttributes = savedColAttribs.split(",").map((col) => col.trim());
+        }
+      });
+    }
+  }, [viewModel]);
   const dvSvc = useMemo(
     () =>
       new dvService({
@@ -82,21 +99,17 @@ function App() {
   );
   return (
     <>
-    <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme}>
-      <MetadataBrowser
-        connection={connection}
-        viewModel={viewModel}
-        dvService={dvSvc}
-        onLog={addLog}
-        isLoading={isLoading}
-      />
+      <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme}>
+        <MetadataBrowser
+          connection={connection}
+          viewModel={viewModel}
+          dvService={dvSvc}
+          onLog={addLog}
+          isLoading={isLoading}
+        />
       </FluentProvider>
     </>
   );
 }
 
 export default App;
-function applyTheme(theme: any) {
-  throw new Error("Function not implemented.");
-}
-
