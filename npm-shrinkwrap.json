@@ -1,12 +1,12 @@
 {
   "name": "pptb-metadata-browser",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "pptb-metadata-browser",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "license": "MIT",
       "dependencies": {
         "@fluentui/react-components": "^9.72.7",
