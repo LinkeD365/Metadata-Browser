@@ -278,20 +278,26 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function saveTableColumnSelection(): void {
-    setIsTableColumnEditOpen(false);
-
     viewModel.tableAttributes = selectedTableCols.map((id) => id.toString());
+    setIsTableColumnEditOpen(false);
   }
 
-  function saveDefaultTableColumnSelection(): void {
-    viewModel.tableAttributes = selectedTableCols.map((id) => id.toString());
-    window.toolboxAPI.settings.setSetting("defaultTableColumns", viewModel.tableAttributes.toString());
-    window.toolboxAPI.utils.showNotification({
-      title: "Default Saved",
-      body: "Default table columns have been saved.",
-      type: "success",
-    });
-    setIsTableColumnEditOpen(false);
+  async function saveDefaultTableColumnSelection(): Promise<void> {
+    saveTableColumnSelection();
+    try {
+      await window.toolboxAPI.settings.setSetting("defaultTableColumns", viewModel.tableAttributes.toString());
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: "Default table columns have been saved.",
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: "Failed to save default table columns.",
+        type: "error",
+      });
+    }
   }
 
   function saveSolutionSelection(): void {
@@ -513,7 +519,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
           Apply
         </Button>
-        <Button style={{ marginLeft: "auto" }} onClick={saveDefaultTableColumnSelection}>
+        <Button onClick={saveDefaultTableColumnSelection}>
           Set Default
         </Button>
       </DrawerFooter>
