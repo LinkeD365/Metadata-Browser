@@ -278,9 +278,26 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function saveTableColumnSelection(): void {
-    setIsTableColumnEditOpen(false);
-
     viewModel.tableAttributes = selectedTableCols.map((id) => id.toString());
+    setIsTableColumnEditOpen(false);
+  }
+
+  async function saveDefaultTableColumnSelection(): Promise<void> {
+    saveTableColumnSelection();
+    try {
+      await window.toolboxAPI.settings.setSetting("defaultTableColumns", viewModel.tableAttributes.toString());
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: "Default table columns have been saved.",
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: "Failed to save default table columns.",
+        type: "error",
+      });
+    }
   }
 
   function saveSolutionSelection(): void {
@@ -500,7 +517,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
-          Save
+          Apply
+        </Button>
+        <Button onClick={saveDefaultTableColumnSelection}>
+          Set Default
         </Button>
       </DrawerFooter>
     </OverlayDrawer>
@@ -640,7 +660,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         </TabList>
         <div>
           {loadingMeta ? (
-            <Spinner style={{height: "300px"}} size="extra-large" label="Loading Metadata..." />
+            <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Metadata..." />
           ) : !viewModel.tableMetadata || viewModel.tableMetadata.length === 0 ? (
             <div style={{ textAlign: "center" }}>Select a Solution or All Tables to load metadata.</div>
           ) : (
