@@ -96,7 +96,8 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Description";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.description || ""}>{item.description}</div>;
+        const desc = item.description || "";
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={desc}>{desc}</div>;
       },
     }),
     createTableColumn<Solution>({
@@ -108,7 +109,8 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Version";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.version || ""}>{item.version}</div>;
+        const version = item.version || "";
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={version}>{version}</div>;
       },
     }),
     createTableColumn<Solution>({
