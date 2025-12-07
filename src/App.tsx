@@ -4,6 +4,7 @@ import { ViewModel } from "./model/ViewModel";
 import { dvService } from "./utils/dataverse";
 import { MetadataBrowser } from "./components/MetadataBrowser";
 import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-components";
+import { RelationshipAttribute } from "./model/tableMeta";
 
 function App() {
   const { connection, isLoading, refreshConnection } = useConnection();
@@ -67,6 +68,20 @@ function App() {
         if (savedColAttribs) {
           viewModel.columnAttributes = savedColAttribs.split(",").map((col: string) => col.trim());
         }
+        const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
+        for (const relType of relTypes) {
+          const savedRelAttribs = await window.toolboxAPI.settings.getSetting(
+            "defaultRelationshipAttributes" + relType
+          );
+          if (savedRelAttribs) {
+            viewModel.relationshipAttributes = viewModel.relationshipAttributes.concat(
+              JSON.parse(savedRelAttribs).map((attr: RelationshipAttribute) => {
+                return Object.assign(new RelationshipAttribute(), attr);
+              })
+            );
+          }
+        }
+        addLog("Loaded default relationship attributes", "info");
       } catch (error) {
         console.error("Failed to load default settings:", error);
       }

@@ -257,8 +257,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }
 
   function saveRelationshipAttrSelection(): void {
-    // remove existing relationship attributes whose type includes "many" (case-insensitive),
-    // then append the newly selected relationship attributes
     viewModel.relationshipAttributes = (viewModel.relationshipAttributes || [])
       .filter((r) => !(r.type && r.type == (selectedValue as string)))
       .concat(
@@ -269,13 +267,29 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           return relAttr;
         })
       );
-    // viewModel.relationshipAttributes = selectedRelationshipAttributes.map((id) => {
-    //   const relAttr = new RelationshipAttribute();
-    //   relAttr.attributeName = id.toString();
-    //   relAttr.type = selectedValue as string;
-    //   return relAttr;
-    // });
+
     setIsRelationshipsColumnsOpen(false);
+  }
+
+  async function saveRelationshipAttributesDefaults(): Promise<void> {
+    saveRelationshipAttrSelection();
+    try {
+      await window.toolboxAPI.settings.setSetting(
+        "defaultRelationshipAttributes" + selectedValue,
+        JSON.stringify(viewModel.relationshipAttributes.filter((r) => r.type && r.type == (selectedValue as string)))
+      );
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: `Default ${selectedValue} attributes have been saved.`,
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: `Failed to save default ${selectedValue} attributes. error: ${error}`,
+        type: "error",
+      });
+    }
   }
 
   function exportTableDetailClick(): void {
@@ -391,9 +405,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveColumnAttributes}>
           Apply
         </Button>
-        <Button onClick={saveColumnAttributesDefaults}>
-          Set Default
-        </Button>
+        <Button onClick={saveColumnAttributesDefaults}>Set Default</Button>
       </DrawerFooter>
     </OverlayDrawer>
   );
@@ -434,6 +446,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveRelationshipAttrSelection}>
           Save
         </Button>
+        <Button onClick={saveRelationshipAttributesDefaults}>Set Default</Button>
       </DrawerFooter>
     </OverlayDrawer>
   );
