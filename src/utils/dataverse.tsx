@@ -196,7 +196,7 @@ export class dvService {
       this.onLog(`Fetching keys metadata for table: ${selectedTable.tableName}`, "info");
       const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Keys`);
       const keyMetaList: KeyMeta[] = (meta.value as any).map((key: any) => {
-        console.log("Processing key: ", key);
+        //console.log("Processing key: ", key);
         const keyMeta = new KeyMeta();
         keyMeta.keyName = key.DisplayName?.UserLocalizedLabel?.Label || key.LogicalName || "";
         keyMeta.attributes = [];
@@ -235,7 +235,7 @@ export class dvService {
       this.onLog(`Fetching privileges metadata for table: ${selectedTable.tableName}`, "info");
       const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Privileges`);
       const keyMetaList: PrivilegeMeta[] = (meta.value as any).map((privilege: any) => {
-        console.log("Processing key: ", privilege);
+        // console.log("Processing key: ", privilege);
         const privMeta = new PrivilegeMeta();
         privMeta.privilegeName = privilege.Name;
         privMeta.attributes = [];
@@ -274,7 +274,6 @@ export class dvService {
       this.onLog(`Fetching relationships metadata for table: ${selectedTable.tableName} type: ${type}`, "info");
       const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/${type}s`);
       const relationships: RelationshipMeta[] = (meta.value as any).map((relationship: any) => {
-        console.log("Processing Relationship: ", relationship);
         const relationshipMeta = new RelationshipMeta();
         relationshipMeta.relationshipName = relationship.SchemaName;
         relationshipMeta.type = type;
@@ -336,7 +335,7 @@ export class dvService {
       const meta = await this.dvApi.fetchXmlQuery(fetchXml);
       console.log("Solutions fetched: ", meta);
       const solutions: Solution[] = (meta.value as any).map((solution: any) => {
-        console.log("Processing Solution: ", solution);
+        //console.log("Processing Solution: ", solution);
         const solutionMeta = new Solution();
         solutionMeta.solutionName = solution.friendlyname;
         solutionMeta.uniqueName = solution.uniquename;
