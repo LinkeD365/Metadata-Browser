@@ -103,7 +103,8 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
           return col;
         },
         renderCell: (item) => {
-          return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+          const value = item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+          return <div className="grid-cell-content" title={value}>{value}</div>;
         },
       })
     );
@@ -119,7 +120,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return "Column Name";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.displayName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>{item.displayName}</div>;
       },
     }),
     createTableColumn<ColumnMeta>({
@@ -131,7 +132,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return "Logical";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.columnName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.columnName}>{item.columnName}</div>;
       },
     }),
     createTableColumn<ColumnMeta>({
@@ -143,7 +144,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return "Type";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.dataType}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.dataType}>{item.dataType}</div>;
       },
     }),
     ...createColumnsFromSelColumns(),
