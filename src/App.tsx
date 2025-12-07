@@ -68,24 +68,20 @@ function App() {
         if (savedColAttribs) {
           viewModel.columnAttributes = savedColAttribs.split(",").map((col: string) => col.trim());
         }
-        console.log(viewModel.relationshipAttributes.length);
         const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
         for (const relType of relTypes) {
           const savedRelAttribs = await window.toolboxAPI.settings.getSetting(
             "defaultRelationshipAttributes" + relType
           );
-          console.log(savedRelAttribs);
           if (savedRelAttribs) {
-            viewModel.relationshipAttributes.push(
+            viewModel.relationshipAttributes = viewModel.relationshipAttributes.concat(
               JSON.parse(savedRelAttribs).map((attr: RelationshipAttribute) => {
-                {
-                  return Object.assign(new RelationshipAttribute(), attr);
-                }
+                return Object.assign(new RelationshipAttribute(), attr);
               })
             );
           }
         }
-        console.log("Loaded default relationship attributes: ", viewModel.relationshipAttributes);
+        addLog("Loaded default relationship attributes", "info");
       } catch (error) {
         console.error("Failed to load default settings:", error);
       }

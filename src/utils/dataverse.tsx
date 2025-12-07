@@ -196,7 +196,7 @@ export class dvService {
       this.onLog(`Fetching keys metadata for table: ${selectedTable.tableName}`, "info");
       const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Keys`);
       const keyMetaList: KeyMeta[] = (meta.value as any).map((key: any) => {
-        //console.log("Processing key: ", key);
+        // console.log("Processing key: ", key);
         const keyMeta = new KeyMeta();
         keyMeta.keyName = key.DisplayName?.UserLocalizedLabel?.Label || key.LogicalName || "";
         keyMeta.attributes = [];
@@ -335,7 +335,7 @@ export class dvService {
       const meta = await this.dvApi.fetchXmlQuery(fetchXml);
       console.log("Solutions fetched: ", meta);
       const solutions: Solution[] = (meta.value as any).map((solution: any) => {
-        //console.log("Processing Solution: ", solution);
+        // console.log("Processing Solution: ", solution);
         const solutionMeta = new Solution();
         solutionMeta.solutionName = solution.friendlyname;
         solutionMeta.uniqueName = solution.uniquename;
