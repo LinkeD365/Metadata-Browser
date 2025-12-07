@@ -371,16 +371,16 @@ body {
 }
 
 .grid-cell-json {
-  max-width: 100%;
-  max-height: 100px;
+  max-width: 400px;
+  max-height: 400px;
   overflow: auto;
   word-break: break-word;
   white-space: pre-wrap;
 }
 
 .grid-cell-json::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px;
+  height: 3px;
 }
 
 .grid-cell-json::-webkit-scrollbar-track {
