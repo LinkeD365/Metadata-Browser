@@ -18,6 +18,7 @@ import {
   tokens,
 } from "@fluentui/react-components";
 import { ColumnMeta } from "../model/columnMeta";
+import JSONPretty from "react-json-pretty";
 
 interface TableColumnsProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -104,7 +105,18 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         },
         renderCell: (item) => {
           const value = item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
-          return <div className="grid-cell-content" title={value}>{value}</div>;
+
+          return (
+            <div className="grid-cell-json">
+              <JSONPretty
+                style={{ fontSize: "1em", fontFamily: "arial" }}
+                id="json-pretty"
+                mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
+                errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
+                data={value}
+              ></JSONPretty>
+            </div>
+          );
         },
       })
     );
@@ -120,7 +132,11 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return "Column Name";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>{item.displayName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>
+            {item.displayName}
+          </div>
+        );
       },
     }),
     createTableColumn<ColumnMeta>({
@@ -132,7 +148,11 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return "Logical";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.columnName}>{item.columnName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.columnName}>
+            {item.columnName}
+          </div>
+        );
       },
     }),
     createTableColumn<ColumnMeta>({
@@ -144,7 +164,11 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         return "Type";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.dataType}>{item.dataType}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.dataType}>
+            {item.dataType}
+          </div>
+        );
       },
     }),
     ...createColumnsFromSelColumns(),
