@@ -209,7 +209,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             return <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col}</div>;
           },
           renderCell: (item) => {
-            return item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+            const value = item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
+            return <div className="grid-cell-content" title={value}>{value}</div>;
           },
         })
       );
@@ -343,7 +344,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         return "Table Name";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.displayName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>{item.displayName}</div>;
       },
     }),
     createTableColumn<TableMeta>({
@@ -355,7 +356,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         return "Logical";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.tableName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.tableName}>{item.tableName}</div>;
       },
     }),
     ...createTableColumnsFrom(),
