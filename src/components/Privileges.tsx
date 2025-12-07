@@ -79,13 +79,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
         },
         renderCell: (item) => {
           return (
-            <div
-              style={{
-                maxWidth: "500px",
-                maxHeight: "100px",
-              }}
-            >
-              {" "}
+            <div className="grid-cell-json">
               <JSONPretty
                 style={{ fontSize: "1em", fontFamily: "arial" }}
                 id="json-pretty"
@@ -93,10 +87,8 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
                 errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
                 data={item.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue || ""}
               ></JSONPretty>
-              {/* {item.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue || ""} */}
             </div>
           );
-          // return item.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue || "";
         },
       })
     );
@@ -112,7 +104,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
         return "Privilege Name";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.privilegeName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.privilegeName}>{item.privilegeName}</div>;
       },
     }),
     ...createPrivilegeAttributes,

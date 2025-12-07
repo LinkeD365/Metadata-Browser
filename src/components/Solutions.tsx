@@ -72,7 +72,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Solution Name";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.solutionName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.solutionName}>{item.solutionName}</div>;
       },
     }),
     createTableColumn<Solution>({
@@ -84,7 +84,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Unique Name";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.uniqueName}</div>;
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.uniqueName}>{item.uniqueName}</div>;
       },
     }),
     createTableColumn<Solution>({
@@ -96,7 +96,8 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Description";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.description}</div>;
+        const desc = item.description || "";
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={desc}>{desc}</div>;
       },
     }),
     createTableColumn<Solution>({
@@ -108,7 +109,8 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Version";
       },
       renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.version}</div>;
+        const version = item.version || "";
+        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={version}>{version}</div>;
       },
     }),
     createTableColumn<Solution>({
