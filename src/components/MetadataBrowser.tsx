@@ -210,7 +210,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
           },
           renderCell: (item) => {
             const value = item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
-            return <div className="grid-cell-content" title={value}>{value}</div>;
+            return (
+              <div className="grid-cell-content" title={value}>
+                {value}
+              </div>
+            );
           },
         })
       );
@@ -286,7 +290,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   async function saveDefaultTableColumnSelection(): Promise<void> {
     saveTableColumnSelection();
     try {
-      await window.toolboxAPI.settings.setSetting("defaultTableColumns", viewModel.tableAttributes.toString());
+      await window.toolboxAPI.settings.set("defaultTableColumns", viewModel.tableAttributes.toString());
       window.toolboxAPI.utils.showNotification({
         title: "Default Saved",
         body: "Default table columns have been saved.",
@@ -344,7 +348,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         return "Table Name";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>{item.displayName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>
+            {item.displayName}
+          </div>
+        );
       },
     }),
     createTableColumn<TableMeta>({
@@ -356,7 +364,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         return "Logical";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.tableName}>{item.tableName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.tableName}>
+            {item.tableName}
+          </div>
+        );
       },
     }),
     ...createTableColumnsFrom(),
@@ -520,9 +532,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
           Apply
         </Button>
-        <Button onClick={saveDefaultTableColumnSelection}>
-          Set Default
-        </Button>
+        <Button onClick={saveDefaultTableColumnSelection}>Set Default</Button>
       </DrawerFooter>
     </OverlayDrawer>
   );
