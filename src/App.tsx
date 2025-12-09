@@ -57,22 +57,19 @@ function App() {
   const [viewModel] = useState(() => new ViewModel());
 
   useEffect(() => {
-    console.log("Loading default table columns from settings");
     (async () => {
       try {
-        const savedColumns = await window.toolboxAPI.settings.getSetting("defaultTableColumns");
+        const savedColumns = await window.toolboxAPI.settings.get("defaultTableColumns");
         if (savedColumns) {
           viewModel.tableAttributes = savedColumns.split(",").map((col: string) => col.trim());
         }
-        const savedColAttribs = await window.toolboxAPI.settings.getSetting("defaultColumnAttributes");
+        const savedColAttribs = await window.toolboxAPI.settings.get("defaultColumnAttributes");
         if (savedColAttribs) {
           viewModel.columnAttributes = savedColAttribs.split(",").map((col: string) => col.trim());
         }
         const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
         for (const relType of relTypes) {
-          const savedRelAttribs = await window.toolboxAPI.settings.getSetting(
-            "defaultRelationshipAttributes" + relType
-          );
+          const savedRelAttribs = await window.toolboxAPI.settings.get("defaultRelationshipAttributes" + relType);
           if (savedRelAttribs) {
             viewModel.relationshipAttributes = viewModel.relationshipAttributes.concat(
               JSON.parse(savedRelAttribs).map((attr: RelationshipAttribute) => {
