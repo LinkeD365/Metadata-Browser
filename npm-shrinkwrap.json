@@ -2442,9 +2442,9 @@
       }
     },
     "node_modules/@pptb/types": {
-      "version": "1.0.8",
-      "resolved": "https://registry.npmjs.org/@pptb/types/-/types-1.0.8.tgz",
-      "integrity": "sha512-qGjif4qCFvGsHFB4Ly0xcvfTMkr+IB9WXh2/Zn0/C//orX6IBpnlSXn2D3xUjj69a9hAiqjVMhNJ1fpJJNqO7g==",
+      "version": "1.0.9",
+      "resolved": "https://registry.npmjs.org/@pptb/types/-/types-1.0.9.tgz",
+      "integrity": "sha512-mh9VMur/QwAljNLZ3kuS+UuHIrVUaycGwzPBKJx+40uiioNrKwK1zUc83yaL+CbWrde4zEuVBviCqC2jl4RxZA==",
       "dev": true,
       "license": "GPL-3.0"
     },
