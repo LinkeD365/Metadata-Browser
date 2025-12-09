@@ -241,7 +241,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   async function saveColumnAttributesDefaults(): Promise<void> {
     saveColumnAttributes();
     try {
-      await window.toolboxAPI.settings.setSetting("defaultColumnAttributes", viewModel.columnAttributes.toString());
+      await window.toolboxAPI.settings.set("defaultColumnAttributes", viewModel.columnAttributes.toString());
       window.toolboxAPI.utils.showNotification({
         title: "Default Saved",
         body: "Default column attributes have been saved.",
@@ -274,7 +274,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   async function saveRelationshipAttributesDefaults(): Promise<void> {
     saveRelationshipAttrSelection();
     try {
-      await window.toolboxAPI.settings.setSetting(
+      await window.toolboxAPI.settings.set(
         "defaultRelationshipAttributes" + selectedValue,
         JSON.stringify(viewModel.relationshipAttributes.filter((r) => r.type && r.type == (selectedValue as string)))
       );
