@@ -27,7 +27,6 @@ function App() {
         case "terminal:output":
         case "terminal:command:completed":
         case "terminal:error":
-          // Terminal events handled by dedicated components
           break;
         case "theme:changed":
         case "settings:updated":
