@@ -38,7 +38,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   }, [selectedTable]);
 
   async function getKeysMeta() {
-    if (!connection || !connection.isActive) {
+    if (!connection) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -103,7 +103,11 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         return "Key Name";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.keyName}>{item.keyName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.keyName}>
+            {item.keyName}
+          </div>
+        );
       },
     }),
     ...createKeyAttributes,

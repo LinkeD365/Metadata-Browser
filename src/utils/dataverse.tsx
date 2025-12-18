@@ -23,7 +23,7 @@ export class dvService {
   /// @todo : Need to swap back to toolbox code when fixed
   async getAllTables(): Promise<TableMeta[]> {
     this.onLog("Fetching table metadata...", "info");
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection ) {
       throw new Error("No connection available");
     }
     //const tables = await this.dvApi.getAllEntitiesMetadata();
@@ -62,7 +62,7 @@ export class dvService {
   // @returns Promise<ColumnMeta[]> - A promise that resolves to an array of ColumnMeta
   async getColumnsMeta(table: string): Promise<ColumnMeta[]> {
     this.onLog(`Fetching column metadata for table: ${table}`, "info");
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection ) {
       throw new Error("No connection available");
     }
     try {
@@ -105,7 +105,8 @@ export class dvService {
 
   async getSolutions(managed: boolean): Promise<Solution[]> {
     this.onLog("Fetching solutions...", "info");
-    if (!this.connection || !this.connection.isActive) {
+    console.log("Fetching solutions, connection: ", this.connection);
+    if (!this.connection) {
       throw new Error("No connection available");
     }
 
@@ -127,7 +128,7 @@ export class dvService {
 
   async getSolutionTables(solutionUniqueName: string): Promise<TableMeta[]> {
     this.onLog(`Fetching tables for solution: ${solutionUniqueName}`, "info");
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection) {
       throw new Error("No connection available");
     }
     const query = `solutioncomponents?$select=objectid&$expand=solutionid($select=solutionid)&$filter=(componenttype eq 1) and (solutionid/uniquename eq '${solutionUniqueName}')`;
@@ -189,7 +190,7 @@ export class dvService {
   }
 
   async loadKeysMetadata(selectedTable: TableMeta): Promise<KeyMeta[]> {
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection ) {
       throw new Error("No connection available");
     }
     try {
@@ -228,7 +229,7 @@ export class dvService {
   }
 
   async loadPrivilegesMetadata(selectedTable: TableMeta): Promise<PrivilegeMeta[]> {
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection ) {
       throw new Error("No connection available");
     }
     try {
@@ -267,7 +268,7 @@ export class dvService {
   }
 
   async loadRelationshipMeta(selectedTable: TableMeta, type: string): Promise<RelationshipMeta[]> {
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection ) {
       throw new Error("No connection available");
     }
     try {
@@ -306,7 +307,7 @@ export class dvService {
   }
 
   async loadSolutionsForTable(selectedTable: TableMeta): Promise<Solution[]> {
-    if (!this.connection || !this.connection.isActive) {
+    if (!this.connection ) {
       throw new Error("No connection available");
     }
     try {

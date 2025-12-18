@@ -40,7 +40,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
   }, [selectedTable]);
 
   async function getSolutions() {
-    if (!connection || !connection.isActive) {
+    if (!connection ) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
