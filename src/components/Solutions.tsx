@@ -2,19 +2,20 @@ import React from "react";
 import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
+import { Spinner } from "@fluentui/react-components";
 import {
-  TableColumnDefinition,
-  createTableColumn,
-  DataGrid,
-  DataGridBody,
-  DataGridCell,
-  DataGridHeader,
-  DataGridHeaderCell,
-  DataGridRow,
-  tokens,
-  Spinner,
-} from "@fluentui/react-components";
-
+  ModuleRegistry,
+  TextFilterModule,
+  ClientSideRowModelModule,
+  themeQuartz,
+  ColDef,
+  RowAutoHeightModule,
+} from "ag-grid-community";
+import { AgGridReact } from "ag-grid-react";
+const myTheme = themeQuartz.withParams({
+  headerHeight: "30px",
+});
+ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
 import { Solution } from "../model/solution";
 
 interface SolutionsProps {
@@ -61,107 +62,41 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
     return;
   }
 
-  const attributes: TableColumnDefinition<Solution>[] = [
-    createTableColumn<Solution>({
-      columnId: "name",
-      compare: (a, b) => {
-        return a.solutionName.localeCompare(b.solutionName);
-      },
-      renderHeaderCell: () => {
-        return "Solution Name";
-      },
-      renderCell: (item) => {
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.solutionName}>
-            {item.solutionName}
-          </div>
-        );
-      },
-    }),
-    createTableColumn<Solution>({
-      columnId: "uniqueName",
-      compare: (a, b) => {
-        return a.uniqueName.localeCompare(b.uniqueName);
-      },
-      renderHeaderCell: () => {
-        return "Unique Name";
-      },
-      renderCell: (item) => {
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.uniqueName}>
-            {item.uniqueName}
-          </div>
-        );
-      },
-    }),
-    createTableColumn<Solution>({
-      columnId: "description",
-      compare: (a, b) => {
-        return a.description?.localeCompare(b.description || "") || 0;
-      },
-      renderHeaderCell: () => {
-        return "Description";
-      },
-      renderCell: (item) => {
-        const desc = item.description || "";
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={desc}>
-            {desc}
-          </div>
-        );
-      },
-    }),
-    createTableColumn<Solution>({
-      columnId: "version",
-      compare: (a, b) => {
-        return a.version?.localeCompare(b.version || "") || 0;
-      },
-      renderHeaderCell: () => {
-        return "Version";
-      },
-      renderCell: (item) => {
-        const version = item.version || "";
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={version}>
-            {version}
-          </div>
-        );
-      },
-    }),
-    createTableColumn<Solution>({
-      columnId: "isManaged",
-      compare: (a, b) => {
-        return a.isManaged === b.isManaged ? 0 : a.isManaged ? -1 : 1;
-      },
-      renderHeaderCell: () => {
-        return "Is Managed";
-      },
-      renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.isManaged ? "Yes" : "No"}</div>;
-      },
-    }),
-    createTableColumn<Solution>({
-      columnId: "subcomponents",
-      compare: (a, b) => {
-        return a.subcomponents === b.subcomponents ? 0 : a.subcomponents ? -1 : 1;
-      },
-      renderHeaderCell: () => {
-        return "Include Subcomponents";
-      },
-      renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.subcomponents ? "Yes" : "No"}</div>;
-      },
-    }),
-  ];
+  const defaultColDefs = React.useMemo<ColDef<Solution>>(() => {
+    return {
+      flex: 1,
+      resizable: true,
+      sortable: true,
+      filter: true,
+      wrapText: true,
+      autoHeight: true,
+    };
+  }, []);
 
-  const columnSizingOptions = {
-    name: {
-      minWidth: 80,
-      maxWidth: 400,
-      idealWidth: 120,
-      defaultWidth: 120,
-    },
-  };
+  const colDefs = React.useMemo<ColDef<Solution>[]>(
+    () => [
+      { headerName: "Name", field: "solutionName", flex: 2 },
+      { headerName: "Unique Name", field: "uniqueName" },
+      { headerName: "Description", field: "description" },
+      { headerName: "Version", field: "version" },
+      { headerName: "Is Managed", field: "isManaged" },
+      { headerName: "Include Subcomponents", field: "subcomponents" },
+    ],
+
+    [connection, selectedTable.solutions]
+  );
+
+  const keyColumnGrid = (
+    <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
+      <AgGridReact<Solution>
+        theme={myTheme}
+        rowData={selectedTable.solutions}
+        columnDefs={colDefs}
+        defaultColDef={defaultColDefs}
+        domLayout="normal"
+      />
+    </div>
+  );
 
   if (loadingMeta) {
     return <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Privileges Metadata..." />;
@@ -171,39 +106,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       {selectedTable.solutions.length === 0 && (
         <div style={{ textAlign: "center" }}>No Solutions found for this table.</div>
       )}
-      {selectedTable.solutions.length > 0 && (
-        <DataGrid
-          columns={attributes}
-          items={selectedTable.solutions}
-          columnSizingOptions={columnSizingOptions}
-          sortable
-          resizableColumns
-          resizableColumnsOptions={{
-            autoFitColumns: false,
-          }}
-        >
-          <DataGridHeader
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-              backgroundColor: tokens.colorNeutralBackground2,
-              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-            }}
-          >
-            <DataGridRow>
-              {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
-            </DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<Solution>>
-            {({ item, rowId }) => (
-              <DataGridRow<Solution> key={rowId}>
-                {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-              </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-      )}
+      {selectedTable.solutions.length > 0 && keyColumnGrid}
     </div>
   );
 });

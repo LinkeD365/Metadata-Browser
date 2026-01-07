@@ -37,7 +37,8 @@ function App() {
           console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
-
+          document.body.setAttribute("data-theme", theme);
+          document.body.setAttribute("data-ag-theme-mode", theme);
           break;
       }
     },
@@ -61,6 +62,7 @@ function App() {
       const currentTheme = await window.toolboxAPI.utils.getCurrentTheme();
       setTheme(currentTheme);
       document.body.setAttribute("data-theme", currentTheme);
+      document.body.setAttribute("data-ag-theme-mode", currentTheme);
     })();
   }, []);
 

@@ -4,13 +4,6 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import {
   Button,
-  createTableColumn,
-  DataGrid,
-  DataGridBody,
-  DataGridCell,
-  DataGridHeader,
-  DataGridHeaderCell,
-  DataGridRow,
   DrawerBody,
   DrawerFooter,
   DrawerHeader,
@@ -25,7 +18,6 @@ import {
   SelectTabData,
   SelectTabEvent,
   Tab,
-  TableColumnDefinition,
   TabList,
   TabValue,
   tokens,
@@ -39,6 +31,19 @@ import { Keys } from "./Keys";
 import { Relationships } from "./Relationships";
 import { Privileges } from "./Privileges";
 import { Solutions } from "./Solutions";
+import {
+  ModuleRegistry,
+  TextFilterModule,
+  ClientSideRowModelModule,
+  themeQuartz,
+  ColDef,
+  RowAutoHeightModule,
+} from "ag-grid-community";
+import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
+const myTheme = themeQuartz.withParams({
+  headerHeight: "30px",
+});
+ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -163,67 +168,49 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     return selTable.attributes.filter((attr) => attr.attributeName.toLowerCase().includes(searchAttr.toLowerCase()));
   }, [selTable, searchAttr]);
 
-  const attributes: TableColumnDefinition<Attribute>[] = [
-    createTableColumn<Attribute>({
-      columnId: "name",
-      compare: (a, b) => {
-        return a.attributeName.localeCompare(b.attributeName);
+  const defaultColDefs = React.useMemo<ColDef>(() => {
+    return {
+      flex: 1,
+      resizable: true,
+      sortable: true,
+      filter: true,
+      wrapText: true,
+      autoHeight: true,
+    };
+  }, []);
+  const colDefs = React.useMemo<ColDef<Attribute>[]>(
+    () => [
+      { headerName: "Attribute Name", field: "attributeName" },
+      {
+        headerName: "Value",
+        field: "attributeValue",
+        cellRenderer: (params: CustomCellRendererProps<Attribute>) => {
+          return (
+            <JSONPretty
+              style={{ fontSize: "1em", fontFamily: "arial" }}
+              id="json-pretty"
+              mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
+              errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
+              data={params?.data?.attributeValue}
+            ></JSONPretty>
+          );
+        },
       },
-      renderHeaderCell: () => {
-        return "Attribute Name";
-      },
-      renderCell: (item) => {
-        return <div style={{ verticalAlign: "top" }}>{item.attributeName}</div>;
-      },
-    }),
-    createTableColumn<Attribute>({
-      columnId: "value",
-      compare: (a, b) => {
-        return a.attributeValue.localeCompare(b.attributeValue);
-      },
-      renderHeaderCell: () => {
-        return "Value";
-      },
-      renderCell: (item) => {
-        return (
-          <JSONPretty
-            style={{ fontSize: "1em", fontFamily: "arial" }}
-            id="json-pretty"
-            mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-            errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-            data={item.attributeValue}
-          ></JSONPretty>
-        );
-      },
-    }),
-  ];
+    ],
+    []
+  );
 
-  const Details = React.memo(() => (
-    <div role="tabpanel" aria-labelledby={`${table}-details`}>
-      <DataGrid columns={attributes} items={filteredAttributes} sortable>
-        <DataGridHeader
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            backgroundColor: tokens.colorNeutralBackground2,
-            boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-          }}
-        >
-          <DataGridRow>
-            {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
-          </DataGridRow>
-        </DataGridHeader>
-        <DataGridBody<Attribute>>
-          {({ item, rowId }) => (
-            <DataGridRow<Attribute> key={rowId}>
-              {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-            </DataGridRow>
-          )}
-        </DataGridBody>
-      </DataGrid>
+  const tableDetails = (
+    <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
+      <AgGridReact<Attribute>
+        theme={myTheme}
+        rowData={filteredAttributes}
+        columnDefs={colDefs}
+        defaultColDef={defaultColDefs}
+        domLayout="normal"
+      />
     </div>
-  ));
+  );
 
   function editColumnsClick(): void {
     setIsColumnEditOpen(true);
@@ -456,7 +443,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       {columnDrawer}
       {relationshipDrawer}
       {selectedTable === table && (
-        <div>
+        <div style={{ position: "sticky", top: "40px", zIndex: 15, }}>
           <TabList selectedValue={selectedValue} onTabSelect={onTabSelect} size="small">
             <Tab id="details" value="details">
               Details
@@ -553,8 +540,8 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
               )}
             </div>
           </TabList>
-          <div>
-            {selectedValue === "details" && <Details />}
+          <div style={{ position: "sticky", top: "60px", zIndex: 10 }}>
+            {selectedValue === "details" && tableDetails}
             {selectedValue === "columns" && (
               <TableColumns
                 connection={connection}

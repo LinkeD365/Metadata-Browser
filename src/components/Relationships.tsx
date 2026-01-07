@@ -2,21 +2,23 @@ import React from "react";
 import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { RelationshipMeta, TableMeta } from "../model/tableMeta";
+import { Spinner, TableRowId } from "@fluentui/react-components";
+
 import {
-  TableColumnDefinition,
-  createTableColumn,
-  DataGrid,
-  DataGridBody,
-  DataGridCell,
-  DataGridHeader,
-  DataGridHeaderCell,
-  DataGridRow,
-  tokens,
-  Spinner,
-  DataGridProps,
-  TableRowId,
-} from "@fluentui/react-components";
-import JSONPretty from "react-json-pretty";
+  ModuleRegistry,
+  TextFilterModule,
+  ClientSideRowModelModule,
+  themeQuartz,
+  ColDef,
+  RowAutoHeightModule,
+  SelectionChangedEvent,
+  RowSelectionOptions,
+} from "ag-grid-community";
+import { AgGridReact } from "ag-grid-react";
+const myTheme = themeQuartz.withParams({
+  headerHeight: "30px",
+});
+ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
 import { ViewModel } from "../model/ViewModel";
 
 interface RelationshipsProps {
@@ -33,7 +35,7 @@ interface RelationshipsProps {
 export const Relationships = observer((props: RelationshipsProps): React.JSX.Element => {
   const { connection, dvService, onLog, selectedTable, showNotification, type, viewModel } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
-  const [selectedRelationships, setSelectedRelationships] = React.useState<Set<TableRowId>>();
+
   React.useEffect(() => {
     onLog(`Loading Relationships for table: ${selectedTable.tableName}`, "info");
     if (selectedTable && selectedTable.Relationships.filter((r) => r.type === type).length === 0) {
@@ -73,13 +75,17 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
       );
   }, [selectedTable.relationshipSearch, selectedTable.Relationships, selectedTable.Relationships.length]);
 
-  const onRelationshipSelected: DataGridProps["onSelectionChange"] = (_e, data) => {
-    console.log(data);
-    setSelectedRelationships(data.selectedItems);
-    selectedTable.selectedRelationships = new Set<string>(Array.from(data.selectedItems) as string[]);
-  };
-
-  const createRelationshipAttributes = React.useMemo<TableColumnDefinition<RelationshipMeta>[]>(() => {
+  const defaultColDefs = React.useMemo<ColDef>(() => {
+    return {
+      flex: 1,
+      resizable: true,
+      sortable: true,
+      filter: true,
+      wrapText: true,
+      autoHeight: true,
+    };
+  }, []);
+  const createRelAttribs = React.useMemo<ColDef<RelationshipMeta>[]>(() => {
     if (
       !selectedTable.Relationships ||
       selectedTable.Relationships.length === 0 ||
@@ -91,58 +97,46 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
     // const cols = selectedTable.Relationships.filter((r) => r.type === type)[0].attributes || [];
     return viewModel.relationshipAttributes
       .filter((attr) => attr.type === type)
-      .map((col) =>
-        createTableColumn<RelationshipMeta>({
-          columnId: col.attributeName,
-          compare: (a, b) => {
-            const aVal = a.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
-            const bVal = b.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
-            return aVal.localeCompare(bVal);
-          },
-          renderHeaderCell: () => {
-            return col.attributeName;
-          },
-          renderCell: (item) => {
-            return (
-              <div className="grid-cell-json">
-                <JSONPretty
-                  style={{ fontSize: "1em", fontFamily: "arial" }}
-                  id="json-pretty"
-                  mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-                  errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-                  data={item.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue || ""}
-                ></JSONPretty>
-              </div>
-            );
-          },
-        })
+      .map(
+        (col) =>
+          ({
+            headerName: col.attributeName,
+            valueGetter: (params) => {
+              const attr = params.data?.attributes?.find((a) => a.attributeName === col.attributeName);
+              return attr?.attributeValue || "";
+            },
+          } as ColDef<RelationshipMeta>)
       );
   }, [selectedTable.Relationships.length, type, viewModel.relationshipAttributes]);
 
-  const attributes: TableColumnDefinition<RelationshipMeta>[] = [
-    createTableColumn<RelationshipMeta>({
-      columnId: "name",
-      compare: (a, b) => {
-        return a.relationshipName.localeCompare(b.relationshipName);
-      },
-      renderHeaderCell: () => {
-        return "Relationship Name";
-      },
-      renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.relationshipName}>{item.relationshipName}</div>;
-      },
-    }),
-    ...createRelationshipAttributes,
-  ];
+  const colDefs = React.useMemo<ColDef<RelationshipMeta>[]>(
+    () => [{ headerName: "Relationship Name", field: "relationshipName", flex: 2 }, ...createRelAttribs],
+    [connection, createRelAttribs]
+  );
 
-  const columnSizingOptions = {
-    name: {
-      minWidth: 120,
-      maxWidth: 400,
-      idealWidth: 200,
-      defaultWidth: 120,
-    },
-  };
+  function relsSelected(event: SelectionChangedEvent<RelationshipMeta>): void {
+    const selectedRows = event.api.getSelectedRows();
+    const selectedIds = new Set<TableRowId>(selectedRows.map((col) => col.relationshipName as TableRowId));
+    selectedTable.selectedRelationships = new Set<string>(Array.from(selectedIds) as string[]);
+  }
+  const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
+    return {
+      mode: "multiRow",
+    };
+  }, []);
+  const relationshipsGrid = (
+    <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
+      <AgGridReact<RelationshipMeta>
+        theme={myTheme}
+        rowData={filteredRelationships.filter((r) => r.type === type)}
+        columnDefs={colDefs}
+        defaultColDef={defaultColDefs}
+        domLayout="normal"
+        rowSelection={rowSelection}
+        onSelectionChanged={relsSelected}
+      />
+    </div>
+  );
 
   if (loadingMeta) {
     return <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Relationships Metadata..." />;
@@ -153,45 +147,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
       {selectedTable.Relationships.filter((r) => r.type === type).length === 0 && (
         <div style={{ textAlign: "center" }}>No Relationships found for this table.</div>
       )}
-      {selectedTable.Relationships.filter((r) => r.type === type).length > 0 && (
-        <DataGrid
-          columns={attributes}
-          items={filteredRelationships.filter((r) => r.type === type)}
-          columnSizingOptions={columnSizingOptions}
-          getRowId={(item) => item.relationshipName}
-          selectionMode="multiselect"
-          subtleSelection
-          selectionAppearance="neutral"
-          selectedItems={selectedRelationships}
-          onSelectionChange={onRelationshipSelected}
-          sortable
-          resizableColumns
-          resizableColumnsOptions={{
-            autoFitColumns: false,
-          }}
-        >
-          <DataGridHeader
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-              backgroundColor: tokens.colorNeutralBackground2,
-              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-            }}
-          >
-            <DataGridRow>
-              {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
-            </DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<RelationshipMeta>>
-            {({ item, rowId }) => (
-              <DataGridRow<RelationshipMeta> key={rowId}>
-                {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-              </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-      )}
+      {selectedTable.Relationships.filter((r) => r.type === type).length > 0 && relationshipsGrid}
     </div>
   );
 });
