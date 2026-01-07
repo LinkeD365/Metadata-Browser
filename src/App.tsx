@@ -39,6 +39,7 @@ function App() {
           console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
+          
           break;
       }
     },
