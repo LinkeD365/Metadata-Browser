@@ -17,7 +17,6 @@ import {
 
 import { Solution } from "../model/solution";
 
-
 interface SolutionsProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
@@ -40,7 +39,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
   }, [selectedTable]);
 
   async function getSolutions() {
-    if (!connection ) {
+    if (!connection) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -72,7 +71,11 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Solution Name";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.solutionName}>{item.solutionName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.solutionName}>
+            {item.solutionName}
+          </div>
+        );
       },
     }),
     createTableColumn<Solution>({
@@ -84,7 +87,11 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         return "Unique Name";
       },
       renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.uniqueName}>{item.uniqueName}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.uniqueName}>
+            {item.uniqueName}
+          </div>
+        );
       },
     }),
     createTableColumn<Solution>({
@@ -97,7 +104,11 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       },
       renderCell: (item) => {
         const desc = item.description || "";
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={desc}>{desc}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={desc}>
+            {desc}
+          </div>
+        );
       },
     }),
     createTableColumn<Solution>({
@@ -110,13 +121,17 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       },
       renderCell: (item) => {
         const version = item.version || "";
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={version}>{version}</div>;
+        return (
+          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={version}>
+            {version}
+          </div>
+        );
       },
     }),
     createTableColumn<Solution>({
       columnId: "isManaged",
       compare: (a, b) => {
-        return (a.isManaged === b.isManaged) ? 0 : a.isManaged ? -1 : 1;
+        return a.isManaged === b.isManaged ? 0 : a.isManaged ? -1 : 1;
       },
       renderHeaderCell: () => {
         return "Is Managed";
@@ -127,8 +142,8 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
     }),
     createTableColumn<Solution>({
       columnId: "subcomponents",
-      compare: (a, b) => { 
-        return (a.subcomponents === b.subcomponents) ? 0 : a.subcomponents ? -1 : 1;
+      compare: (a, b) => {
+        return a.subcomponents === b.subcomponents ? 0 : a.subcomponents ? -1 : 1;
       },
       renderHeaderCell: () => {
         return "Include Subcomponents";

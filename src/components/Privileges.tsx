@@ -39,7 +39,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   }, [selectedTable]);
 
   async function getPrivileges() {
-    if (!connection ) {
+    if (!connection) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }

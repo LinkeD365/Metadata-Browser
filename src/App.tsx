@@ -7,7 +7,7 @@ import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-com
 import { RelationshipAttribute } from "./model/tableMeta";
 
 function App() {
-  let { connection, isLoading, refreshConnection } = useConnection();
+  const { connection, isLoading, refreshConnection } = useConnection();
 
   const { addLog } = useEventLog();
   const [theme, setTheme] = useState<string>("light");
@@ -24,8 +24,6 @@ function App() {
           break;
 
         case "connection:deleted":
-          console.log("Connection event received:", event);
-
           await refreshConnection();
           clearSelections();
           break;
@@ -39,7 +37,7 @@ function App() {
           console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
-          
+
           break;
       }
     },
@@ -62,6 +60,7 @@ function App() {
     (async () => {
       const currentTheme = await window.toolboxAPI.utils.getCurrentTheme();
       setTheme(currentTheme);
+      document.body.setAttribute("data-theme", currentTheme);
     })();
   }, []);
 

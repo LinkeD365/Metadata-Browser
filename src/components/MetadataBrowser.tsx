@@ -1,5 +1,16 @@
 import React, { useCallback } from "react";
 import { observer } from "mobx-react";
+import {
+  ModuleRegistry,
+  TextFilterModule,
+  ClientSideRowModelModule,
+  themeQuartz,
+  ColGroupDef,
+  ColDef,
+} from "ag-grid-community";
+import { AgGridReact, CustomCellRendererProps, CustomInnerHeaderProps } from "ag-grid-react";
+
+ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule]);
 
 import {
   Button,
@@ -55,7 +66,9 @@ import {
   LockClosedRegular,
   TextboxMoreRegular,
 } from "@fluentui/react-icons";
-
+const myTheme = themeQuartz.withParams({
+  headerHeight: "30px",
+});
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
 });
@@ -493,6 +506,12 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       </DataGrid>
     </>
   ));
+{
+  const colDefs: ColDef[] = React.useMemo(() => }
+
+  const tableGrid =     (<div style={{ width: "95vw", height: "98vh" }}>
+      <AgGridReact<TableMeta> theme={myTheme} rowData={filterdTableMetadata} columnDefs={colDefs} domLayout="normal" />
+    </div>);
 
   // if (loadingMeta) {
   //   return <div>Loading metadata...</div>;
