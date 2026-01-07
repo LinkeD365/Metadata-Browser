@@ -42,7 +42,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
   }, [selectedTable]);
 
   async function getRelationshipMeta() {
-    if (!connection || !connection.isActive) {
+    if (!connection ) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }

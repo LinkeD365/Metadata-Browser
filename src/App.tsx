@@ -7,7 +7,8 @@ import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-com
 import { RelationshipAttribute } from "./model/tableMeta";
 
 function App() {
-  const { connection, isLoading, refreshConnection } = useConnection();
+  let { connection, isLoading, refreshConnection } = useConnection();
+
   const { addLog } = useEventLog();
   const [theme, setTheme] = useState<string>("light");
 
@@ -17,11 +18,16 @@ function App() {
       switch (event) {
         case "connection:updated":
         case "connection:created":
-          refreshConnection();
+          await refreshConnection();
+          clearSelections();
+
           break;
 
         case "connection:deleted":
-          refreshConnection();
+          console.log("Connection event received:", event);
+
+          await refreshConnection();
+          clearSelections();
           break;
 
         case "terminal:output":
@@ -33,12 +39,18 @@ function App() {
           console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
+          
           break;
       }
     },
     [refreshConnection]
   );
 
+  function clearSelections() {
+    viewModel.solutions = [];
+    viewModel.selectedSolution = undefined;
+    viewModel.tableMetadata = [];
+  }
   useToolboxEvents(handleEvent);
 
   // Add initial log (run only once on mount)

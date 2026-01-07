@@ -1,11 +1,16 @@
 {
-  "name": "pptb-metadata-browser",
-  "version": "0.1.23",
+  "name": "@linked365/pptb-metadata-browser",
+  "version": "0.1.24",
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
+  "author": "LinkeD365",
   "repository": {
     "url": "https://github.com/LinkeD365/Metadata-Browser",
     "type": "git"
+  },
+  "homepage": "https://github.com/LinkeD365/Metadata-Browser#readme",
+  "bugs": {
+    "url": "https://github.com/LinkeD365/Metadata-Browser/issues"
   },
   "contributors": [
     {
@@ -17,7 +22,7 @@
   "configurations": {
     "repository": "https://github.com/LinkeD365/Metadata-Browser",
     "website": "https://linked365.blog",
-    "readmeUrl": "https://github.com/LinkeD365/Metadata-Browser/blob/main/README.md",
+    "readmeUrl": "https://raw.githubusercontent.com/LinkeD365/Metadata-Browser/refs/heads/master/README.md",
     "iconUrl": "https://linked365.blog/linked365Logo.png"
   },
   "engines": {
