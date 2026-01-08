@@ -6,7 +6,7 @@ import {
   RowAutoHeightModule,
   RowSelectionModule,
 } from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
+
 import "ag-grid-community/styles/ag-theme-quartz.css";
 
 // Extend Window interface to track ag-Grid module registration status and prevent duplicate registration
