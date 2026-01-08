@@ -1,18 +1,12 @@
 import React, { useCallback } from "react";
 import { observer } from "mobx-react";
 import {
-  ModuleRegistry,
-  TextFilterModule,
-  ClientSideRowModelModule,
-  themeQuartz,
   ColDef,
-  RowSelectionModule,
   RowSelectionOptions,
   SelectionChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
-
-ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowSelectionModule]);
+import { agGridTheme } from "../config/agGridConfig";
 
 import {
   Button,
@@ -59,9 +53,7 @@ import {
   LockClosedRegular,
   TextboxMoreRegular,
 } from "@fluentui/react-icons";
-const myTheme = themeQuartz.withParams({
-  headerHeight: "30px",
-});
+
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
 });
@@ -393,7 +385,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             } as ColDef<TableMeta>)
         ),
     ],
-    [connection, viewModel.tableAttributes]
+    [viewModel.tableAttributes]
   );
 
   const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
@@ -411,13 +403,15 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const tableGrid = (
     <div style={{ width: "98vw", height: "93vh" }}>
       <AgGridReact<TableMeta>
-        theme={myTheme}
+        theme={agGridTheme}
         rowData={filterdTableMetadata}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
         rowSelection={rowSelection}
         onSelectionChanged={tableSelected}
+        getRowId={(params) => params.data?.tableName ?? ""}
+        onRowDoubleClicked={(event) => handleRowDoubleClick(event.data!)}
       />
     </div>
   );

@@ -7,18 +7,10 @@ import {
 } from "@fluentui/react-components";
 
 import {
-  ModuleRegistry,
-  TextFilterModule,
-  ClientSideRowModelModule,
-  themeQuartz,
   ColDef,
-  RowAutoHeightModule,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-const myTheme = themeQuartz.withParams({
-  headerHeight: "30px",
-});
-ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
+import { agGridTheme } from "../config/agGridConfig";
 
 interface PrivilegesProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -74,7 +66,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
       autoHeight: true,
     };
   }, []);
-  const createKeyAttr = React.useMemo<ColDef<PrivilegeMeta>[]>(() => {
+  const createPrivilegeAttr = React.useMemo<ColDef<PrivilegeMeta>[]>(() => {
     if (!selectedTable.privileges || selectedTable.privileges.length === 0) {
       return [];
     }
@@ -92,15 +84,15 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   }, [selectedTable.privileges.length]);
 
   const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
-    () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2 }, ...createKeyAttr],
+    () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2 }, ...createPrivilegeAttr],
 
-    [connection, selectedTable.privileges]
+    [createPrivilegeAttr]
   );
 
-  const keyColumnGrid = (
+  const privilegesGrid = (
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<PrivilegeMeta>
-        theme={myTheme}
+        theme={agGridTheme}
         rowData={selectedTable.privileges}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
@@ -117,7 +109,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
       {selectedTable.privileges.length === 0 && (
         <div style={{ textAlign: "center" }}>No Privileges found for this table.</div>
       )}
-      {selectedTable.privileges.length > 0 && keyColumnGrid}
+      {selectedTable.privileges.length > 0 && privilegesGrid}
     </div>
   );
 });
