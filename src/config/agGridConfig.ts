@@ -9,7 +9,7 @@ import {
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 
-// Extend Window interface to include ag-Grid registration flag
+// Extend Window interface to track ag-Grid module registration status and prevent duplicate registration
 declare global {
   interface Window {
     __agGridModulesRegistered?: boolean;
