@@ -97,6 +97,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        getRowId={(params) => params.data?.privilegeName ?? ""}
       />
     </div>
   );

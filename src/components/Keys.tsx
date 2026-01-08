@@ -95,6 +95,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        getRowId={(params) => params.data?.keyName ?? ""}
       />
     </div>
   );
@@ -105,7 +106,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   return (
     <div>
       {selectedTable.keys.length === 0 && <div style={{ textAlign: "center" }}>No Keys found for this table.</div>}
-      {selectedTable.keys.length > 0 && <>{keyColumnGrid}</>}
+      {selectedTable.keys.length > 0 && keyColumnGrid}
     </div>
   );
 });

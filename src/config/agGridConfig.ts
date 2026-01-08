@@ -31,5 +31,5 @@ if (typeof window !== "undefined") {
 
 // Shared theme configuration
 export const agGridTheme = themeQuartz.withParams({
-  headerHeight: "30px",
+  headerHeight: 30,
 });

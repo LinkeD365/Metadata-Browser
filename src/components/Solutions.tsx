@@ -94,6 +94,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        getRowId={(params) => params.data?.uniqueName ?? ""}
       />
     </div>
   );
