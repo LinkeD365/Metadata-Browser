@@ -1,10 +1,6 @@
 import React, { useCallback } from "react";
 import { observer } from "mobx-react";
-import {
-  ColDef,
-  RowSelectionOptions,
-  SelectionChangedEvent,
-} from "ag-grid-community";
+import { ColDef, RowSelectionOptions, SelectionChangedEvent } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 
@@ -521,7 +517,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
         <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveSolutionSelection}>
-          Save
+          Select
         </Button>
       </DrawerFooter>
     </OverlayDrawer>
