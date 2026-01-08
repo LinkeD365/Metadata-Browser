@@ -82,7 +82,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         valueFormatter: (params) => (params.value ? "Yes" : "No"),
       },
     ],
-
+    // Static column definitions that don't depend on any component state
     []
   );
 

@@ -9,17 +9,23 @@ import {
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 
+// Extend Window interface to include ag-Grid registration flag
+declare global {
+  interface Window {
+    __agGridModulesRegistered?: boolean;
+  }
+}
+
 // Register ag-Grid modules once
 if (typeof window !== "undefined") {
-  const w = window as any;
-  if (!w.__agGridModulesRegistered) {
+  if (!window.__agGridModulesRegistered) {
     ModuleRegistry.registerModules([
       TextFilterModule,
       ClientSideRowModelModule,
       RowAutoHeightModule,
       RowSelectionModule,
     ]);
-    w.__agGridModulesRegistered = true;
+    window.__agGridModulesRegistered = true;
   }
 }
 
