@@ -4,18 +4,10 @@ import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
 import {
-  ModuleRegistry,
-  TextFilterModule,
-  ClientSideRowModelModule,
-  themeQuartz,
   ColDef,
-  RowAutoHeightModule,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-const myTheme = themeQuartz.withParams({
-  headerHeight: "30px",
-});
-ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
+import { agGridTheme } from "../config/agGridConfig";
 import { Solution } from "../model/solution";
 
 interface SolutionsProps {
@@ -79,17 +71,25 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       { headerName: "Unique Name", field: "uniqueName" },
       { headerName: "Description", field: "description" },
       { headerName: "Version", field: "version" },
-      { headerName: "Is Managed", field: "isManaged" },
-      { headerName: "Include Subcomponents", field: "subcomponents" },
+      {
+        headerName: "Is Managed",
+        field: "isManaged",
+        valueFormatter: (params) => (params.value ? "Yes" : "No"),
+      },
+      {
+        headerName: "Include Subcomponents",
+        field: "subcomponents",
+        valueFormatter: (params) => (params.value ? "Yes" : "No"),
+      },
     ],
 
-    [connection, selectedTable.solutions]
+    []
   );
 
-  const keyColumnGrid = (
+  const solutionsGrid = (
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<Solution>
-        theme={myTheme}
+        theme={agGridTheme}
         rowData={selectedTable.solutions}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
@@ -106,7 +106,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       {selectedTable.solutions.length === 0 && (
         <div style={{ textAlign: "center" }}>No Solutions found for this table.</div>
       )}
-      {selectedTable.solutions.length > 0 && keyColumnGrid}
+      {selectedTable.solutions.length > 0 && solutionsGrid}
     </div>
   );
 });

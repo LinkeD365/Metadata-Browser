@@ -5,18 +5,10 @@ import { KeyMeta, TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
 
 import {
-  ModuleRegistry,
-  TextFilterModule,
-  ClientSideRowModelModule,
-  themeQuartz,
   ColDef,
-  RowAutoHeightModule,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-const myTheme = themeQuartz.withParams({
-  headerHeight: "30px",
-});
-ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
+import { agGridTheme } from "../config/agGridConfig";
 
 interface KeysProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -92,13 +84,13 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   const colDefs = React.useMemo<ColDef<KeyMeta>[]>(
     () => [{ headerName: "Key Name", field: "keyName", flex: 2 }, ...createKeyAttr],
 
-    [connection, selectedTable.keys]
+    [createKeyAttr]
   );
 
   const keyColumnGrid = (
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<KeyMeta>
-        theme={myTheme}
+        theme={agGridTheme}
         rowData={selectedTable.keys}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

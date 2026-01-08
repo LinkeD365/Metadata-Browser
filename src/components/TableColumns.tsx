@@ -5,20 +5,12 @@ import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner, TableRowId } from "@fluentui/react-components";
 import {
-  ModuleRegistry,
-  TextFilterModule,
-  ClientSideRowModelModule,
-  themeQuartz,
   ColDef,
-  RowAutoHeightModule,
   SelectionChangedEvent,
   RowSelectionOptions,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-const myTheme = themeQuartz.withParams({
-  headerHeight: "30px",
-});
-ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
+import { agGridTheme } from "../config/agGridConfig";
 
 import { ColumnMeta } from "../model/columnMeta";
 
@@ -113,7 +105,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
           } as ColDef<ColumnMeta>)
       ),
     ],
-    [connection, viewModel.columnAttributes]
+    [viewModel.columnAttributes]
   );
 
   function colsSelected(event: SelectionChangedEvent<ColumnMeta>): void {
@@ -129,13 +121,14 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   const tableColumnGrid = (
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<ColumnMeta>
-        theme={myTheme}
+        theme={agGridTheme}
         rowData={filteredColumns}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
         rowSelection={rowSelection}
         onSelectionChanged={colsSelected}
+        getRowId={(params) => params.data?.columnName ?? ""}
       />
     </div>
   );

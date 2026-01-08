@@ -32,18 +32,10 @@ import { Relationships } from "./Relationships";
 import { Privileges } from "./Privileges";
 import { Solutions } from "./Solutions";
 import {
-  ModuleRegistry,
-  TextFilterModule,
-  ClientSideRowModelModule,
-  themeQuartz,
   ColDef,
-  RowAutoHeightModule,
 } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
-const myTheme = themeQuartz.withParams({
-  headerHeight: "30px",
-});
-ModuleRegistry.registerModules([TextFilterModule, ClientSideRowModelModule, RowAutoHeightModule]);
+import { agGridTheme } from "../config/agGridConfig";
 
 interface TableDetailProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -203,7 +195,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const tableDetails = (
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<Attribute>
-        theme={myTheme}
+        theme={agGridTheme}
         rowData={filteredAttributes}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
@@ -443,7 +435,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       {columnDrawer}
       {relationshipDrawer}
       {selectedTable === table && (
-        <div style={{ position: "sticky", top: "40px", zIndex: 15, }}>
+        <div style={{ position: "sticky", top: "40px", zIndex: 15 }}>
           <TabList selectedValue={selectedValue} onTabSelect={onTabSelect} size="small">
             <Tab id="details" value="details">
               Details

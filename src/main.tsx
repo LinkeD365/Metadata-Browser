@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import "./config/agGridConfig";
 
 // Ensure DOM is ready and root element exists
 const rootElement = document.getElementById("root");
