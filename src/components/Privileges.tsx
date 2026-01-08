@@ -3,19 +3,14 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { PrivilegeMeta, TableMeta } from "../model/tableMeta";
 import {
-  TableColumnDefinition,
-  createTableColumn,
-  DataGrid,
-  DataGridBody,
-  DataGridCell,
-  DataGridHeader,
-  DataGridHeaderCell,
-  DataGridRow,
-  tokens,
   Spinner,
 } from "@fluentui/react-components";
 
-import JSONPretty from "react-json-pretty";
+import {
+  ColDef,
+} from "ag-grid-community";
+import { AgGridReact } from "ag-grid-react";
+import { agGridTheme } from "../config/agGridConfig";
 
 interface PrivilegesProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -39,7 +34,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   }, [selectedTable]);
 
   async function getPrivileges() {
-    if (!connection ) {
+    if (!connection) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -61,63 +56,50 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
     return;
   }
 
-  const createPrivilegeAttributes = React.useMemo<TableColumnDefinition<PrivilegeMeta>[]>(() => {
+  const defaultColDefs = React.useMemo<ColDef>(() => {
+    return {
+      flex: 1,
+      resizable: true,
+      sortable: true,
+      filter: true,
+      wrapText: true,
+      autoHeight: true,
+    };
+  }, []);
+  const createPrivilegeAttr = React.useMemo<ColDef<PrivilegeMeta>[]>(() => {
     if (!selectedTable.privileges || selectedTable.privileges.length === 0) {
       return [];
     }
     const cols = selectedTable.privileges[0].attributes || [];
-    return cols.map((col) =>
-      createTableColumn<PrivilegeMeta>({
-        columnId: col.attributeName,
-        compare: (a, b) => {
-          const aVal = a.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
-          const bVal = b.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
-          return aVal.localeCompare(bVal);
-        },
-        renderHeaderCell: () => {
-          return col.attributeName;
-        },
-        renderCell: (item) => {
-          return (
-            <div className="grid-cell-json">
-              <JSONPretty
-                style={{ fontSize: "1em", fontFamily: "arial" }}
-                id="json-pretty"
-                mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-                errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-                data={item.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue || ""}
-              ></JSONPretty>
-            </div>
-          );
-        },
-      })
+    return cols.map(
+      (keyAttr) =>
+        ({
+          headerName: keyAttr.attributeName,
+          valueGetter: (params) => {
+            const attr = params.data?.attributes?.find((a) => a.attributeName === keyAttr.attributeName);
+            return attr?.attributeValue || "";
+          },
+        } as ColDef<PrivilegeMeta>)
     );
   }, [selectedTable.privileges.length]);
 
-  const attributes: TableColumnDefinition<PrivilegeMeta>[] = [
-    createTableColumn<PrivilegeMeta>({
-      columnId: "name",
-      compare: (a, b) => {
-        return a.privilegeName.localeCompare(b.privilegeName);
-      },
-      renderHeaderCell: () => {
-        return "Privilege Name";
-      },
-      renderCell: (item) => {
-        return <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.privilegeName}>{item.privilegeName}</div>;
-      },
-    }),
-    ...createPrivilegeAttributes,
-  ];
+  const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
+    () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2 }, ...createPrivilegeAttr],
 
-  const columnSizingOptions = {
-    name: {
-      minWidth: 80,
-      maxWidth: 400,
-      idealWidth: 120,
-      defaultWidth: 120,
-    },
-  };
+    [createPrivilegeAttr]
+  );
+
+  const privilegesGrid = (
+    <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
+      <AgGridReact<PrivilegeMeta>
+        theme={agGridTheme}
+        rowData={selectedTable.privileges}
+        columnDefs={colDefs}
+        defaultColDef={defaultColDefs}
+        domLayout="normal"
+      />
+    </div>
+  );
 
   if (loadingMeta) {
     return <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Privileges Metadata..." />;
@@ -127,39 +109,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
       {selectedTable.privileges.length === 0 && (
         <div style={{ textAlign: "center" }}>No Privileges found for this table.</div>
       )}
-      {selectedTable.privileges.length > 0 && (
-        <DataGrid
-          columns={attributes}
-          items={selectedTable.privileges}
-          columnSizingOptions={columnSizingOptions}
-          sortable
-          resizableColumns
-          resizableColumnsOptions={{
-            autoFitColumns: false,
-          }}
-        >
-          <DataGridHeader
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-              backgroundColor: tokens.colorNeutralBackground2,
-              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-            }}
-          >
-            <DataGridRow>
-              {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
-            </DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<PrivilegeMeta>>
-            {({ item, rowId }) => (
-              <DataGridRow<PrivilegeMeta> key={rowId}>
-                {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-              </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-      )}
+      {selectedTable.privileges.length > 0 && privilegesGrid}
     </div>
   );
 });

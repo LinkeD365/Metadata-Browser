@@ -1,16 +1,15 @@
 import React, { useCallback } from "react";
 import { observer } from "mobx-react";
+import {
+  ColDef,
+  RowSelectionOptions,
+  SelectionChangedEvent,
+} from "ag-grid-community";
+import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
+import { agGridTheme } from "../config/agGridConfig";
 
 import {
   Button,
-  createTableColumn,
-  DataGrid,
-  DataGridBody,
-  DataGridCell,
-  DataGridHeader,
-  DataGridHeaderCell,
-  DataGridProps,
-  DataGridRow,
   DrawerBody,
   DrawerFooter,
   DrawerHeader,
@@ -35,7 +34,6 @@ import {
   Spinner,
   SplitButton,
   Tab,
-  TableColumnDefinition,
   TableRowId,
   TabList,
   TabValue,
@@ -79,10 +77,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
   const [tableQuery, setTableQuery] = React.useState<string>("");
   const [selectedTables, setSelectedTables] = React.useState<Set<TableRowId>>();
-  const onSelectionChange: DataGridProps["onSelectionChange"] = (_e, data) => {
-    console.log(data);
-    setSelectedTables(data.selectedItems);
-  };
+
   const filterdTableMetadata: TableMeta[] = React.useMemo(() => {
     if (!tableQuery || tableQuery.trim() === "") {
       return viewModel.tableMetadata;
@@ -194,31 +189,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     ));
   }
 
-  function createTableColumnsFrom(): TableColumnDefinition<TableMeta>[] {
-    return viewModel.tableAttributes
-      .filter((col) => col)
-      .map((col) =>
-        createTableColumn<TableMeta>({
-          columnId: col,
-          compare: (a, b) => {
-            const aVal = a.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
-            const bVal = b.attributes.find((att) => att.attributeName === col)?.attributeValue ?? "";
-            return aVal.localeCompare(bVal);
-          },
-          renderHeaderCell: () => {
-            return <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col}</div>;
-          },
-          renderCell: (item) => {
-            const value = item.attributes.find((att) => att.attributeName === col)?.attributeValue || "";
-            return (
-              <div className="grid-cell-content" title={value}>
-                {value}
-              </div>
-            );
-          },
-        })
-      );
-  }
   const searchTables = async (_searchQuery: string) => {
     setTableQuery(_searchQuery);
   };
@@ -317,63 +287,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     getTableMeta();
   }
 
-  const tableColumns: TableColumnDefinition<TableMeta>[] = [
-    createTableColumn<TableMeta>({
-      columnId: "details",
-      renderHeaderCell: () => {
-        return " ";
-      },
-      renderCell: (item) => {
-        return (
-          <div style={{ verticalAlign: "top" }}>
-            <Button
-              icon={<TextboxMoreRegular />}
-              size="small"
-              appearance="secondary"
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                handleRowDoubleClick(item);
-              }}
-            />
-          </div>
-        );
-      },
-    }),
-    createTableColumn<TableMeta>({
-      columnId: "name",
-      compare: (a, b) => {
-        return a.displayName.localeCompare(b.displayName);
-      },
-      renderHeaderCell: () => {
-        return "Table Name";
-      },
-      renderCell: (item) => {
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.displayName}>
-            {item.displayName}
-          </div>
-        );
-      },
-    }),
-    createTableColumn<TableMeta>({
-      columnId: "logical",
-      compare: (a, b) => {
-        return a.tableName.localeCompare(b.tableName);
-      },
-      renderHeaderCell: () => {
-        return "Logical";
-      },
-      renderCell: (item) => {
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.tableName}>
-            {item.tableName}
-          </div>
-        );
-      },
-    }),
-    ...createTableColumnsFrom(),
-  ];
-
   const handleRowDoubleClick = React.useCallback(
     (item: TableMeta) => {
       console.log("Row double clicked: ", item);
@@ -417,82 +330,91 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     </div>
   ));
 
-  const columnSizingOptions = {
-    name: {
-      minWidth: 80,
-      maxWidth: 400,
-      idealWidth: 120,
-      defaultWidth: 120,
-    },
-    logical: {
-      defaultWidth: 80,
-      minWidth: 30,
-      idealWidth: 120,
-    },
-    details: {
-      defaultWidth: 30,
-      minWidth: 30,
-      maxWidth: 30,
-      idealWidth: 30,
-    },
-  };
+  const defaultColDefs = React.useMemo<ColDef>(() => {
+    return {
+      flex: 1,
+      resizable: true,
+      sortable: true,
+      filter: true,
+    };
+  }, []);
 
-  const TableDataGrid = React.memo(() => (
-    <>
-      <DataGrid
-        columns={tableColumns}
-        items={filterdTableMetadata}
-        aria-label="Simple data grid"
-        sortable
-        subtleSelection
-        selectionMode="multiselect"
-        selectionAppearance="neutral"
-        selectedItems={selectedTables}
-        getRowId={(item) => item.tableName}
-        onSelectionChange={onSelectionChange}
-        columnSizingOptions={columnSizingOptions}
-        resizableColumns
-        resizableColumnsOptions={{
-          autoFitColumns: false,
-        }}
-      >
-        <DataGridHeader
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            backgroundColor: tokens.colorNeutralBackground2,
-            boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-          }}
-        >
-          <DataGridRow
-            selectionCell={{
-              checkboxIndicator: { "aria-label": "Select All rows" },
-            }}
-          >
-            {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
-          </DataGridRow>
-        </DataGridHeader>
-        <DataGridBody<TableMeta>>
-          {({ item, rowId }) => (
-            <DataGridRow<TableMeta>
-              key={rowId}
-              onDoubleClick={(e: React.MouseEvent) => {
-                console.log("Row double clicked: ", item);
+  const colDefs = React.useMemo<ColDef<TableMeta>[]>(
+    () => [
+      {
+        headerName: "",
+        sortable: false,
+        filter: false,
+        width: 60,
+        resizable: false,
+        maxWidth: 60,
+        minWidth: 60,
+        cellRenderer: (params: CustomCellRendererProps<TableMeta>) => {
+          return (
+            <Button
+              icon={<TextboxMoreRegular />}
+              size="small"
+              appearance="secondary"
+              onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                handleRowDoubleClick(item);
+                handleRowDoubleClick(params.data!);
               }}
-              selectionCell={{
-                checkboxIndicator: { "aria-label": "Select row" },
-              }}
-            >
-              {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-            </DataGridRow>
-          )}
-        </DataGridBody>
-      </DataGrid>
-    </>
-  ));
+            />
+          );
+        },
+      },
+      {
+        headerName: "Table Name",
+        field: "displayName",
+        flex: 2,
+      },
+      {
+        headerName: "Logical Name",
+        field: "tableName",
+      },
+      ...viewModel.tableAttributes
+        .filter((col) => col)
+        .map(
+          (col) =>
+            ({
+              headerName: col,
+              valueGetter: (params) => {
+                const attr = params.data?.attributes?.find((a) => a.attributeName === col);
+                return attr?.attributeValue || "";
+              },
+            } as ColDef<TableMeta>)
+        ),
+    ],
+    [viewModel.tableAttributes]
+  );
+
+  const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
+    return {
+      mode: "multiRow",
+    };
+  }, []);
+
+  function tableSelected(event: SelectionChangedEvent<TableMeta>): void {
+    const selectedRows = event.api.getSelectedRows();
+    const selectedIds = new Set<TableRowId>(selectedRows.map((row) => row.tableName as TableRowId));
+    setSelectedTables(selectedIds);
+  }
+
+  const tableGrid = (
+    <div style={{ width: "98vw", height: "93vh" }}>
+      <AgGridReact<TableMeta>
+        theme={agGridTheme}
+        rowData={filterdTableMetadata}
+        columnDefs={colDefs}
+        defaultColDef={defaultColDefs}
+        domLayout="normal"
+        rowSelection={rowSelection}
+        onSelectionChanged={tableSelected}
+        getRowId={(params) => params.data?.tableName ?? ""}
+        onRowDoubleClicked={(event) => handleRowDoubleClick(event.data!)}
+      />
+    </div>
+  );
 
   // if (loadingMeta) {
   //   return <div>Loading metadata...</div>;
@@ -676,7 +598,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             <div style={{ textAlign: "center" }}>Select a Solution or All Tables to load metadata.</div>
           ) : (
             <>
-              {selectedTab === "tables" && <TableDataGrid />}
+              {selectedTab === "tables" && <> {tableGrid}</>}
               {tableDetails}
             </>
           )}
