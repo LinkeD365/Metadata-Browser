@@ -2,19 +2,13 @@ import React from "react";
 import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { KeyMeta, TableMeta } from "../model/tableMeta";
+import { Spinner } from "@fluentui/react-components";
+
 import {
-  TableColumnDefinition,
-  createTableColumn,
-  DataGrid,
-  DataGridBody,
-  DataGridCell,
-  DataGridHeader,
-  DataGridHeaderCell,
-  DataGridRow,
-  tokens,
-  Spinner,
-} from "@fluentui/react-components";
-import JSONPretty from "react-json-pretty";
+  ColDef,
+} from "ag-grid-community";
+import { AgGridReact } from "ag-grid-react";
+import { agGridTheme } from "../config/agGridConfig";
 
 interface KeysProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -60,66 +54,51 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
     return;
   }
 
-  const createKeyAttributes = React.useMemo<TableColumnDefinition<KeyMeta>[]>(() => {
+  const defaultColDefs = React.useMemo<ColDef>(() => {
+    return {
+      flex: 1,
+      resizable: true,
+      sortable: true,
+      filter: true,
+      wrapText: true,
+      autoHeight: true,
+    };
+  }, []);
+  const createKeyAttr = React.useMemo<ColDef<KeyMeta>[]>(() => {
     if (!selectedTable.keys || selectedTable.keys.length === 0) {
       return [];
     }
     const cols = selectedTable.keys[0].attributes || [];
-    return cols.map((col) =>
-      createTableColumn<KeyMeta>({
-        columnId: col.attributeName,
-        compare: (a, b) => {
-          const aVal = a.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
-          const bVal = b.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue ?? "";
-          return aVal.localeCompare(bVal);
-        },
-        renderHeaderCell: () => {
-          return col.attributeName;
-        },
-        renderCell: (item) => {
-          return (
-            <div className="grid-cell-json">
-              <JSONPretty
-                style={{ fontSize: "1em", fontFamily: "arial" }}
-                id="json-pretty"
-                mainStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-                errorStyle={`font-size: 0.9em; font-family: ${tokens.fontFamilyBase}`}
-                data={item.attributes.find((att) => att.attributeName === col.attributeName)?.attributeValue || ""}
-              ></JSONPretty>
-            </div>
-          );
-        },
-      })
+    return cols.map(
+      (keyAttr) =>
+        ({
+          headerName: keyAttr.attributeName,
+          valueGetter: (params) => {
+            const attr = params.data?.attributes?.find((a) => a.attributeName === keyAttr.attributeName);
+            return attr?.attributeValue || "";
+          },
+        } as ColDef<KeyMeta>)
     );
   }, [selectedTable.keys.length]);
 
-  const attributes: TableColumnDefinition<KeyMeta>[] = [
-    createTableColumn<KeyMeta>({
-      columnId: "name",
-      compare: (a, b) => {
-        return a.keyName.localeCompare(b.keyName);
-      },
-      renderHeaderCell: () => {
-        return "Key Name";
-      },
-      renderCell: (item) => {
-        return (
-          <div className="grid-cell-content" style={{ verticalAlign: "top" }} title={item.keyName}>
-            {item.keyName}
-          </div>
-        );
-      },
-    }),
-    ...createKeyAttributes,
-  ];
-  const columnSizingOptions = {
-    name: {
-      minWidth: 80,
-      maxWidth: 400,
-      idealWidth: 120,
-      defaultWidth: 120,
-    },
-  };
+  const colDefs = React.useMemo<ColDef<KeyMeta>[]>(
+    () => [{ headerName: "Key Name", field: "keyName", flex: 2 }, ...createKeyAttr],
+
+    [createKeyAttr]
+  );
+
+  const keyColumnGrid = (
+    <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
+      <AgGridReact<KeyMeta>
+        theme={agGridTheme}
+        rowData={selectedTable.keys}
+        columnDefs={colDefs}
+        defaultColDef={defaultColDefs}
+        domLayout="normal"
+        getRowId={(params) => params.data?.keyName ?? ""}
+      />
+    </div>
+  );
 
   if (loadingMeta) {
     return <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Keys Metadata..." />;
@@ -127,39 +106,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   return (
     <div>
       {selectedTable.keys.length === 0 && <div style={{ textAlign: "center" }}>No Keys found for this table.</div>}
-      {selectedTable.keys.length > 0 && (
-        <DataGrid
-          columns={attributes}
-          items={selectedTable.keys}
-          columnSizingOptions={columnSizingOptions}
-          sortable
-          resizableColumns
-          resizableColumnsOptions={{
-            autoFitColumns: false,
-          }}
-        >
-          <DataGridHeader
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-              backgroundColor: tokens.colorNeutralBackground2,
-              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-            }}
-          >
-            <DataGridRow>
-              {({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
-            </DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<KeyMeta>>
-            {({ item, rowId }) => (
-              <DataGridRow<KeyMeta> key={rowId}>
-                {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-              </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-      )}
+      {selectedTable.keys.length > 0 && keyColumnGrid}
     </div>
   );
 });
