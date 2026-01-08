@@ -1,6 +1,6 @@
 {
   "name": "@linked365/pptb-metadata-browser",
-  "version": "0.1.24",
+  "version": "0.3.0",
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
   "author": "LinkeD365",
