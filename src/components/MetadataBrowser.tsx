@@ -410,7 +410,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         domLayout="normal"
         rowSelection={rowSelection}
         onSelectionChanged={tableSelected}
-        getRowId={(params) => params.data.tableName}
+        getRowId={(params) => params.data?.tableName ?? ""}
         onRowDoubleClicked={(event) => handleRowDoubleClick(event.data!)}
       />
     </div>
