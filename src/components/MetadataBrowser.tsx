@@ -598,7 +598,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             <div style={{ textAlign: "center" }}>Select a Solution or All Tables to load metadata.</div>
           ) : (
             <>
-              {selectedTab === "tables" && <> {tableGrid}</>}
+              {selectedTab === "tables" && tableGrid}
               {tableDetails}
             </>
           )}

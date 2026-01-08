@@ -189,7 +189,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         },
       },
     ],
-    []
+    [tokens.fontFamilyBase]
   );
 
   const tableDetails = (
@@ -200,6 +200,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        getRowId={(params) => params.data?.attributeName ?? ""}
       />
     </div>
   );
