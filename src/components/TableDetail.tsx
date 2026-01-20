@@ -142,7 +142,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }
 
   function customColAttrs() {
-    if (viewModel.columnAttributes.filter((attr) => !attr.custom).length === 0) {
+    if (viewModel.columnAttributes.filter((attr) => attr.custom).length === 0) {
       return [];
     }
     return viewModel.columnAttributes

@@ -60,7 +60,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
     } catch (error) {
       window.toolboxAPI.utils.showNotification({
         title: "Save Failed",
-        body: "Failed to save default column attributes.",
+        body: "Failed to save default Excel export settings.",
         type: "error",
       });
     }
@@ -95,7 +95,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
             info={<>Ensure you select the appropriate columns in the tabs for export of columns and relationships. </>}
           >
             <Subtitle2>
-              Select one or more tabs to include in the export Excel file. Each selected table will be created a a
+              Select one or more tabs to include in the export Excel file. Each selected table will be created as a
               separate Workbook:
             </Subtitle2>
           </InfoLabel>
@@ -118,10 +118,9 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
             <Checkbox
               label="Include Keys"
               checked={vm.excelOptions.includeKeys}
-              onChange={(_, data) => (
-                console.log("Include Keys changed:", data.checked),
-                (vm.excelOptions.includeKeys = data.checked ? true : false)
-              )}
+              onChange={(_, data) =>
+                (vm.excelOptions.includeKeys = typeof data.checked === "boolean" ? data.checked : false)
+              }
             />
             <Checkbox
               label="Include Privileges"
