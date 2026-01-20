@@ -10,6 +10,10 @@
 - ✅ Select the details icon to create a new tab with tables details
 - ✅ Select attributes you want to display
 - ✅ Export to CSV
+- ✅ Export to Excel
+
+## Latest
+20/1/25 - Added Export to Excel
 
 ## Installation
 
