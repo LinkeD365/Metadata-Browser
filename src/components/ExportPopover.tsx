@@ -119,7 +119,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
               label="Include Keys"
               checked={vm.excelOptions.includeKeys}
               onChange={(_, data) =>
-                (vm.excelOptions.includeKeys = data.checked ? true : false)
+                (vm.excelOptions.includeKeys = typeof data.checked === "boolean" ? data.checked : false)
               }
             />
             <Checkbox
