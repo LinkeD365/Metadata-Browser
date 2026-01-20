@@ -4,11 +4,7 @@ import { dvService } from "../utils/dataverse";
 import { RelationshipMeta, TableMeta } from "../model/tableMeta";
 import { Spinner, TableRowId } from "@fluentui/react-components";
 
-import {
-  ColDef,
-  SelectionChangedEvent,
-  RowSelectionOptions,
-} from "ag-grid-community";
+import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { ViewModel } from "../model/ViewModel";
@@ -30,7 +26,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
 
   React.useEffect(() => {
     onLog(`Loading Relationships for table: ${selectedTable.tableName}`, "info");
-    if (selectedTable && selectedTable.Relationships.filter((r) => r.type === type).length === 0) {
+    if (selectedTable && selectedTable.relationships.filter((r) => r.type === type).length === 0) {
       getRelationshipMeta();
     }
   }, [selectedTable]);
@@ -45,10 +41,10 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
 
     setLoadingMeta(true);
     await dvService
-      .loadRelationshipMeta(selectedTable, type)
+      .getRelationshipsMeta(selectedTable, type)
       .then((relationships) => {
         console.log("Relationships metadata loaded: ", relationships);
-        selectedTable.Relationships.push(...relationships);
+        selectedTable.relationships.push(...relationships);
         onLog(`Loaded ${relationships.length} relationships for table: ${selectedTable.tableName}`, "success");
       })
       .catch((error: { message: any }) => {
@@ -60,12 +56,12 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
 
   const filteredRelationships: RelationshipMeta[] = React.useMemo(() => {
     if (!selectedTable || selectedTable.relationshipSearch?.trim() === "") {
-      return selectedTable.Relationships;
+      return selectedTable.relationships;
     } else
-      return selectedTable.Relationships.filter((t) =>
-        t.relationshipName.toLowerCase().includes(selectedTable.relationshipSearch?.toLowerCase() ?? "")
+      return selectedTable.relationships.filter((t) =>
+        t.relationshipName.toLowerCase().includes(selectedTable.relationshipSearch?.toLowerCase() ?? ""),
       );
-  }, [selectedTable.relationshipSearch, selectedTable.Relationships, selectedTable.Relationships.length]);
+  }, [selectedTable.relationshipSearch, selectedTable.relationships, selectedTable.relationships.length]);
 
   const defaultColDefs = React.useMemo<ColDef>(() => {
     return {
@@ -79,9 +75,9 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
   }, []);
   const createRelAttribs = React.useMemo<ColDef<RelationshipMeta>[]>(() => {
     if (
-      !selectedTable.Relationships ||
-      selectedTable.Relationships.length === 0 ||
-      selectedTable.Relationships.filter((r) => r.type === type).length === 0
+      !selectedTable.relationships ||
+      selectedTable.relationships.length === 0 ||
+      selectedTable.relationships.filter((r) => r.type === type).length === 0
     ) {
       return [];
     }
@@ -97,13 +93,13 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
               const attr = params.data?.attributes?.find((a) => a.attributeName === col.attributeName);
               return attr?.attributeValue || "";
             },
-          } as ColDef<RelationshipMeta>)
+          }) as ColDef<RelationshipMeta>,
       );
-  }, [selectedTable.Relationships.length, type, viewModel.relationshipAttributes]);
+  }, [selectedTable.relationships.length, type, viewModel.relationshipAttributes]);
 
   const colDefs = React.useMemo<ColDef<RelationshipMeta>[]>(
     () => [{ headerName: "Relationship Name", field: "relationshipName", flex: 2 }, ...createRelAttribs],
-    [createRelAttribs]
+    [createRelAttribs],
   );
 
   function relsSelected(event: SelectionChangedEvent<RelationshipMeta>): void {
@@ -137,10 +133,10 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
 
   return (
     <div>
-      {selectedTable.Relationships.filter((r) => r.type === type).length === 0 && (
+      {selectedTable.relationships.filter((r) => r.type === type).length === 0 && (
         <div style={{ textAlign: "center" }}>No Relationships found for this table.</div>
       )}
-      {selectedTable.Relationships.filter((r) => r.type === type).length > 0 && relationshipsGrid}
+      {selectedTable.relationships.filter((r) => r.type === type).length > 0 && relationshipsGrid}
     </div>
   );
 });

@@ -11,7 +11,7 @@ export class TableMeta {
   attributes: Attribute[] = [];
   keys: KeyMeta[] = [];
 
-  Relationships: RelationshipMeta[] = [];
+  relationships: RelationshipMeta[] = [];
   columnSearch?: string;
   selectedColumns: Set<string> = new Set<string>();
   selectedRelationships: Set<string> = new Set<string>();
