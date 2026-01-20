@@ -94,12 +94,12 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
       { headerName: "Column Name", field: "displayName" },
       { headerName: "Logical Name", field: "columnName" },
       { headerName: "Data Type", field: "dataType" },
-      ...viewModel.columnAttributes.map(
+      ...viewModel.columnAttributes.filter(attr => !attr.custom).map(
         (colAttr) =>
           ({
-            headerName: colAttr,
+            headerName: colAttr.name,
             valueGetter: (params) => {
-              const attr = params.data?.attributes?.find((a) => a.attributeName === colAttr);
+              const attr = params.data?.attributes?.find((a) => a.attributeName === colAttr.name);
               return attr?.attributeValue || "";
             },
           } as ColDef<ColumnMeta>)

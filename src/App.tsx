@@ -42,7 +42,7 @@ function App() {
           break;
       }
     },
-    [refreshConnection]
+    [refreshConnection],
   );
 
   function clearSelections() {
@@ -77,7 +77,7 @@ function App() {
         }
         const savedColAttribs = await window.toolboxAPI.settings.get("defaultColumnAttributes");
         if (savedColAttribs) {
-          viewModel.columnAttributes = savedColAttribs.split(",").map((col: string) => col.trim());
+          Object.assign(viewModel.columnAttributes, JSON.parse(savedColAttribs));
         }
         const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
         for (const relType of relTypes) {
@@ -86,9 +86,13 @@ function App() {
             viewModel.relationshipAttributes = viewModel.relationshipAttributes.concat(
               JSON.parse(savedRelAttribs).map((attr: RelationshipAttribute) => {
                 return Object.assign(new RelationshipAttribute(), attr);
-              })
+              }),
             );
           }
+        }
+        const excelExport = await window.toolboxAPI.settings.get("defaultExcelExportOptions");
+        if (excelExport) {
+          Object.assign(viewModel.excelOptions, JSON.parse(excelExport));
         }
         addLog("Loaded default relationship attributes", "info");
       } catch (error) {
@@ -104,14 +108,14 @@ function App() {
         dvApi: window.dataverseAPI,
         onLog: addLog,
       }),
-    [connection, addLog]
+    [connection, addLog],
   );
   return (
     <>
       <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme}>
         <MetadataBrowser
           connection={connection}
-          viewModel={viewModel}
+          vm={viewModel}
           dvService={dvSvc}
           onLog={addLog}
           isLoading={isLoading}

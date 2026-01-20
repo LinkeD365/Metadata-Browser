@@ -35,6 +35,7 @@ import {
   TabValue,
   ToggleButton,
   tokens,
+  Tooltip,
 } from "@fluentui/react-components";
 
 import { ViewModel } from "../model/ViewModel";
@@ -42,13 +43,13 @@ import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
 import {
-  ArrowExportUpRegular,
   ColumnEditRegular,
   Dismiss24Regular,
   EditRegular,
   LockClosedRegular,
   TextboxMoreRegular,
 } from "@fluentui/react-icons";
+import { ExportPopover } from "./ExportPopover";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -58,32 +59,33 @@ interface MetadataBrowserProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
-  viewModel: ViewModel;
+  vm: ViewModel;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 
 export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX.Element => {
-  const { connection, dvService, onLog, viewModel } = props;
+  const { connection, dvService, onLog, vm } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
   const [isTableColumnEditOpen, setIsTableColumnEditOpen] = React.useState(false);
   const [isSolutionSelOpen, setIsSolutionSelOpen] = React.useState(false);
-  const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(viewModel.tableAttributes);
+  const [selectedTableCols, setSelectedTableCols] = React.useState<SelectionItemId[]>(vm.tableAttributes);
   const [selectedTab, setSelectedTab] = React.useState<TabValue>("tables");
   const [managed, setManaged] = React.useState<boolean>(false);
   const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
   const [tableQuery, setTableQuery] = React.useState<string>("");
   const [selectedTables, setSelectedTables] = React.useState<Set<TableRowId>>();
+  const [isExportPopoverOpen, setIsExportPopoverOpen] = React.useState<boolean>(false);
 
   const filterdTableMetadata: TableMeta[] = React.useMemo(() => {
     if (!tableQuery || tableQuery.trim() === "") {
-      return viewModel.tableMetadata;
+      return vm.tableMetadata;
     } else
-      return viewModel.tableMetadata.filter(
+      return vm.tableMetadata.filter(
         (t) =>
           t.displayName.toLowerCase().includes(tableQuery.toLowerCase()) ||
-          t.tableName.toLowerCase().includes(tableQuery.toLowerCase())
+          t.tableName.toLowerCase().includes(tableQuery.toLowerCase()),
       );
-  }, [tableQuery, viewModel.tableMetadata]);
+  }, [tableQuery, vm.tableMetadata]);
   const styles = useStyles();
 
   const showNotification = useCallback(
@@ -94,7 +96,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         console.error("Error showing notification:", error);
       }
     },
-    []
+    [],
   );
 
   React.useEffect(() => {
@@ -102,7 +104,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       dvService
         .getSolutions(managed)
         .then((solutions) => {
-          viewModel.solutions = solutions;
+          vm.solutions = solutions;
           onLog(`Loaded ${solutions.length} solutions from ${connection?.name}`, "success");
         })
         .catch((error: { message: any }) => {
@@ -112,18 +114,18 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }, [isSolutionSelOpen, managed]);
 
   async function getAllTableMeta() {
-    viewModel.selectedSolution = undefined;
+    vm.selectedSolution = undefined;
     getTableMeta();
   }
   async function getTableMeta() {
     setLoadingMeta(true);
-    if (viewModel.selectedSolution) {
+    if (vm.selectedSolution) {
       await dvService
-        .getSolutionTables(viewModel.selectedSolution.uniqueName)
+        .getSolutionTables(vm.selectedSolution.uniqueName)
         .then((tables) => {
-          viewModel.tableMetadata = tables;
+          vm.tableMetadata = tables;
           console.log(tables);
-          onLog(`Loaded ${tables.length} tables from solution: ${viewModel.selectedSolution?.solutionName}`, "success");
+          onLog(`Loaded ${tables.length} tables from solution: ${vm.selectedSolution?.solutionName}`, "success");
         })
         .catch((error: { message: any }) => {
           onLog(`Error loading tables from solution: ${error.message}`, "error");
@@ -135,7 +137,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       await dvService
         .getAllTables()
         .then((tables) => {
-          viewModel.tableMetadata = tables;
+          vm.tableMetadata = tables;
           onLog(`Loaded ${tables.length} tables from ${connection?.name}`, "success");
         })
         .catch((error: { message: any }) => {
@@ -148,14 +150,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function tableAttributeList() {
-    if (
-      !viewModel.tableMetadata ||
-      viewModel.tableMetadata.length === 0 ||
-      viewModel.tableMetadata[0].attributes.length === 0
-    ) {
+    if (!vm.tableMetadata || vm.tableMetadata.length === 0 || vm.tableMetadata[0].attributes.length === 0) {
       return [];
     }
-    return viewModel.tableMetadata[0].attributes
+    return vm.tableMetadata[0].attributes
       .filter((attr) => attr.attributeName != "DisplayName" && attr.attributeName != "LogicalName")
       .map((attr) => (
         <ListItem
@@ -170,10 +168,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function solutionSelectList() {
-    if (!viewModel.solutions || viewModel.solutions.length === 0) {
+    if (!vm.solutions || vm.solutions.length === 0) {
       return [];
     }
-    return viewModel.solutions.map((solution) => (
+    return vm.solutions.map((solution) => (
       <ListItem
         key={solution.solutionId}
         value={solution.solutionId}
@@ -221,17 +219,15 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       });
       return;
     }
-    const data = viewModel.tableMetadata.filter((t) =>
-      selectedTables ? selectedTables.has(t.tableName as TableRowId) : false
+    const data = vm.tableMetadata.filter((t) =>
+      selectedTables ? selectedTables.has(t.tableName as TableRowId) : false,
     );
 
-    const headers = ["Table Name", "Logical Name", ...viewModel.tableAttributes.map((attr) => attr)];
+    const headers = ["Table Name", "Logical Name", ...vm.tableAttributes.map((attr) => attr)];
     const rows = data.map((table) => [
       table.displayName,
       table.tableName,
-      ...viewModel.tableAttributes.map(
-        (attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""
-      ),
+      ...vm.tableAttributes.map((attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""),
     ]);
     const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
@@ -249,14 +245,14 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   function saveTableColumnSelection(): void {
-    viewModel.tableAttributes = selectedTableCols.map((id) => id.toString());
+    vm.tableAttributes = selectedTableCols.map((id) => id.toString());
     setIsTableColumnEditOpen(false);
   }
 
   async function saveDefaultTableColumnSelection(): Promise<void> {
     saveTableColumnSelection();
     try {
-      await window.toolboxAPI.settings.set("defaultTableColumns", viewModel.tableAttributes.toString());
+      await window.toolboxAPI.settings.set("defaultTableColumns", vm.tableAttributes.toString());
       window.toolboxAPI.utils.showNotification({
         title: "Default Saved",
         body: "Default table columns have been saved.",
@@ -277,31 +273,29 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       onLog("No solution selected.", "warning");
       return;
     }
-    viewModel.selectedSolution = viewModel.solutions.find(
-      (sol) => sol.solutionId === selectedSolutionIds[0].toString()
-    );
+    vm.selectedSolution = vm.solutions.find((sol) => sol.solutionId === selectedSolutionIds[0].toString());
     getTableMeta();
   }
 
   const handleRowDoubleClick = React.useCallback(
     (item: TableMeta) => {
       console.log("Row double clicked: ", item);
-      if (!viewModel.selectedTables) {
-        viewModel.selectedTables = [];
+      if (!vm.selectedTables) {
+        vm.selectedTables = [];
       }
-      const exists = viewModel.selectedTables.some((t) => t.tableName === item.tableName);
+      const exists = vm.selectedTables.some((t) => t.tableName === item.tableName);
       if (!exists) {
-        viewModel.selectedTables.push(item);
+        vm.selectedTables.push(item);
         onLog(`Added "${item.displayName}" to selected tables.`, "success");
       }
       setSelectedTab(item.tableName as TabValue);
     },
-    [viewModel, onLog]
+    [vm, onLog],
   );
 
   const tableTabs =
-    viewModel.selectedTables && viewModel.selectedTables.length > 0 ? (
-      (viewModel.selectedTables ?? []).map((t) => (
+    vm.selectedTables && vm.selectedTables.length > 0 ? (
+      (vm.selectedTables ?? []).map((t) => (
         <Tab key={t.tableName} id={`Table-${t.tableName}`} value={t.tableName as TabValue}>
           {t.displayName}
         </Tab>
@@ -310,13 +304,13 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       <></>
     );
 
-  const tableDetails = viewModel.selectedTables?.map((t) => (
+  const tableDetails = vm.selectedTables?.map((t) => (
     <div key={t.tableName} role="tabpanel" aria-labelledby={`Table-${t.tableName}`}>
       <TableDetails
         connection={connection}
         dvService={dvService}
         isLoading={loadingMeta}
-        viewModel={viewModel}
+        viewModel={vm}
         table={t.tableName}
         selectedTable={selectedTab as string}
         onLog={onLog}
@@ -368,7 +362,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         headerName: "Logical Name",
         field: "tableName",
       },
-      ...viewModel.tableAttributes
+      ...vm.tableAttributes
         .filter((col) => col)
         .map(
           (col) =>
@@ -378,10 +372,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
                 const attr = params.data?.attributes?.find((a) => a.attributeName === col);
                 return attr?.attributeValue || "";
               },
-            } as ColDef<TableMeta>)
+            }) as ColDef<TableMeta>,
         ),
     ],
-    [viewModel.tableAttributes]
+    [vm.tableAttributes],
   );
 
   const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
@@ -394,6 +388,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     const selectedRows = event.api.getSelectedRows();
     const selectedIds = new Set<TableRowId>(selectedRows.map((row) => row.tableName as TableRowId));
     setSelectedTables(selectedIds);
+    vm.selectedTables = selectedRows;
   }
 
   const tableGrid = (
@@ -472,7 +467,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         </DrawerHeaderTitle>
       </DrawerHeader>
 
-      <DrawerBody>
+      <DrawerBody >
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <ToggleButton
             onClick={() => {
@@ -541,6 +536,24 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     </Menu>
   );
 
+  const exportMenu = (
+    <Menu positioning="below-end">
+      <MenuTrigger disableButtonEnhancement>
+        {(triggerProps: MenuButtonProps) => (
+          <SplitButton menuButton={triggerProps} primaryActionButton={{ onClick: () => setIsExportPopoverOpen(true) }}>
+            Export All
+          </SplitButton>
+        )}
+      </MenuTrigger>
+
+      <MenuPopover>
+        <MenuList>
+          <MenuItem onClick={exportTablesClick}>Table List only</MenuItem>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
+  );
+
   return (
     <div>
       {tableColumnDrawer}
@@ -558,31 +571,29 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
           <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
             {selectedTab === "tables" && (
               <div style={{ marginLeft: "auto", padding: "0 10px" }}>
-                {viewModel.tableMetadata.length > 0 && (
-                  <SearchBox
-                    size="small"
-                    placeholder="Search Tables"
-                    aria-label="Search Display & Logical Name"
-                    onChange={tableSearch}
-                    style={{ margin: "2px" }}
-                  />
+                {vm.tableMetadata.length > 0 && (
+                  <Tooltip content="Search Tables by Display Name or Logical Name" relationship="label">
+                    <SearchBox
+                      size="small"
+                      placeholder="Search Tables"
+                      aria-label="Search Display & Logical Name"
+                      onChange={tableSearch}
+                      style={{ margin: "2px" }}
+                    />
+                  </Tooltip>
                 )}
-                {viewModel.selectedSolution && (
+                {vm.selectedSolution && (
                   <Label size="small" style={{ padding: "2px 2px" }}>
-                    Solution: {viewModel.selectedSolution?.solutionName}{" "}
+                    Solution: {vm.selectedSolution?.solutionName}{" "}
                   </Label>
                 )}
                 <div style={{ display: "inline-block", padding: "0 2px" }}>{allTablesMenu}</div>
                 <Button
                   icon={<ColumnEditRegular />}
                   onClick={editColumnsClick}
-                  disabled={viewModel.tableMetadata.length === 0}
+                  disabled={vm.tableMetadata.length === 0}
                 />
-                <Button
-                  icon={<ArrowExportUpRegular />}
-                  onClick={exportTablesClick}
-                  disabled={!selectedTables || selectedTables.size === 0}
-                />
+                {exportMenu}
               </div>
             )}
           </div>
@@ -590,13 +601,25 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         <div>
           {loadingMeta ? (
             <Spinner style={{ height: "300px" }} size="extra-large" label="Loading Metadata..." />
-          ) : !viewModel.tableMetadata || viewModel.tableMetadata.length === 0 ? (
+          ) : !vm.tableMetadata || vm.tableMetadata.length === 0 ? (
             <div style={{ textAlign: "center" }}>Select a Solution or All Tables to load metadata.</div>
           ) : (
             <>
               {selectedTab === "tables" && tableGrid}
               {tableDetails}
             </>
+          )}
+        </div>
+        <div>
+          {isExportPopoverOpen && (
+            <ExportPopover
+              connection={connection}
+              dvSvc={dvService}
+              vm={vm}
+              isExportOpen={isExportPopoverOpen}
+              setIsExportOpen={setIsExportPopoverOpen}
+              onLog={onLog}
+            />
           )}
         </div>
       </div>

@@ -22,8 +22,16 @@ import {
   TabValue,
   tokens,
   Body1,
+  Field,
+  Input,
 } from "@fluentui/react-components";
-import { ArrowExportUpRegular, ColumnEditRegular, Dismiss24Regular } from "@fluentui/react-icons";
+import {
+  Add12Filled,
+  ArrowExportUpRegular,
+  ColumnEditRegular,
+  Dismiss24Regular,
+  Save24Regular,
+} from "@fluentui/react-icons";
 import { TableColumns } from "./TableColumns";
 import { Attribute, RelationshipAttribute, TableMeta } from "../model/tableMeta";
 import JSONPretty from "react-json-pretty";
@@ -31,9 +39,7 @@ import { Keys } from "./Keys";
 import { Relationships } from "./Relationships";
 import { Privileges } from "./Privileges";
 import { Solutions } from "./Solutions";
-import {
-  ColDef,
-} from "ag-grid-community";
+import { ColDef } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 
@@ -57,9 +63,10 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     selTable.relationshipSearch = "";
   };
   const [isColumnEditOpen, setIsColumnEditOpen] = React.useState(false);
+  const [customColName, setCustomColName] = React.useState("");
   const [isRelationshipsColumnsOpen, setIsRelationshipsColumnsOpen] = React.useState(false);
   const [selectedColumnAttributes, setSelectedColumnAttributes] = React.useState<SelectionItemId[]>(
-    viewModel.columnAttributes
+    viewModel.columnAttributes.map((attr) => attr.name as SelectionItemId),
   );
   const [selectedRelationshipAttributes, setSelectedRelationshipAttributes] = React.useState<SelectionItemId[]>([]);
 
@@ -104,7 +111,9 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const searchAttributes = async (_searchQuery: string) => {
     setSearchAttr(_searchQuery);
   };
+
   const debouncedSearchAttr = React.useCallback(debounce(searchAttributes, 300), []);
+
   function attributeSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     debouncedSearchAttr(data.value ?? "");
   }
@@ -118,7 +127,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         (attr) =>
           attr.attributeName != "AttributeType" &&
           attr.attributeName != "DisplayName" &&
-          attr.attributeName != "LogicalName"
+          attr.attributeName != "LogicalName",
       )
       .map((attr) => (
         <ListItem
@@ -132,14 +141,32 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       ));
   }
 
+  function customColAttrs() {
+    if (viewModel.columnAttributes.filter((attr) => !attr.custom).length === 0) {
+      return [];
+    }
+    return viewModel.columnAttributes
+      .filter((attr) => attr.custom)
+      .map((attr) => (
+        <ListItem key={attr.name} value={attr.name} aria-label={attr.name} >
+          {attr.name} <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={() => {
+            viewModel.columnAttributes = viewModel.columnAttributes.filter(
+              (a) => a.name !== attr.name && a.custom
+            );
+          }} />
+        </ListItem>
+      ));
+  }
+
   function relationshipAttributes() {
     if (
-      selTable.Relationships.length === 0 ||
-      selTable.Relationships.filter((r) => r.type === selectedValue).length === 0
+      selTable.relationships.length === 0 ||
+      selTable.relationships.filter((r) => r.type === selectedValue).length === 0
     ) {
       return [];
     }
-    return selTable.Relationships.filter((r) => r.type === selectedValue)[0]
+    return selTable.relationships
+      .filter((r) => r.type === selectedValue)[0]
       .attributes.filter((attr) => attr.attributeName != "SchemaName" && attr.attributeName != "RelationshipType")
       .map((attr) => (
         <ListItem
@@ -189,7 +216,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         },
       },
     ],
-    [tokens.fontFamilyBase]
+    [tokens.fontFamilyBase],
   );
 
   const tableDetails = (
@@ -214,14 +241,16 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }
 
   function saveColumnAttributes(): void {
-    viewModel.columnAttributes = selectedColumnAttributes.map((id) => id.toString());
+    const customCols = JSON.stringify(viewModel.columnAttributes.filter((attr) => attr.custom));
+    console.log("Custom Columns to retain: ", customCols);
+    viewModel.columnAttributes = selectedColumnAttributes.map((id) => ({ name: id.toString(), custom: false })).concat(JSON.parse(customCols));
     setIsColumnEditOpen(false);
   }
 
   async function saveColumnAttributesDefaults(): Promise<void> {
     saveColumnAttributes();
     try {
-      await window.toolboxAPI.settings.set("defaultColumnAttributes", viewModel.columnAttributes.toString());
+      await window.toolboxAPI.settings.set("defaultColumnAttributes", JSON.stringify(viewModel.columnAttributes));
       window.toolboxAPI.utils.showNotification({
         title: "Default Saved",
         body: "Default column attributes have been saved.",
@@ -245,7 +274,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           relAttr.attributeName = id.toString();
           relAttr.type = selectedValue as string;
           return relAttr;
-        })
+        }),
       );
 
     setIsRelationshipsColumnsOpen(false);
@@ -256,7 +285,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     try {
       await window.toolboxAPI.settings.set(
         "defaultRelationshipAttributes" + selectedValue,
-        JSON.stringify(viewModel.relationshipAttributes.filter((r) => r.type && r.type == (selectedValue as string)))
+        JSON.stringify(viewModel.relationshipAttributes.filter((r) => r.type && r.type == (selectedValue as string))),
       );
       window.toolboxAPI.utils.showNotification({
         title: "Default Saved",
@@ -271,7 +300,13 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       });
     }
   }
-
+  function setCustomColumn(): void {
+    if (customColName.trim() === "") {
+      return;
+    }
+    viewModel.columnAttributes.push({ name: customColName.trim(), custom: true });
+    setCustomColName("");
+  }
   function exportTableDetailClick(): void {
     const title = ["Table: ", selTable.displayName, selTable.tableName];
     const headers = ["Attribute Name", "Value"];
@@ -286,14 +321,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     const headers = ["Column Name", "Logical Name", "Type", ...viewModel.columnAttributes];
 
     const data = selTable.columns.filter((t) =>
-      selTable.selectedColumns ? selTable.selectedColumns.has(t.columnName) : false
+      selTable.selectedColumns ? selTable.selectedColumns.has(t.columnName) : false,
     );
     const rows = data.map((col) => [
       col.displayName,
       col.columnName,
       col.dataType,
-      ...viewModel.columnAttributes.map((attrName) => {
-        const attr = col.attributes.find((a) => a.attributeName === attrName);
+      ...viewModel.columnAttributes.map((colDef) => {
+        const attr = col.attributes.find((a) => a.attributeName === colDef.name);
         return attr ? attr.attributeValue : "";
       }),
     ]);
@@ -337,8 +372,8 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         .filter((attr) => attr.type === selectedValue)
         .map((attr) => attr.attributeName),
     ];
-    const data = selTable.Relationships.filter((t) =>
-      selTable.selectedRelationships ? selTable.selectedRelationships.has(t.relationshipName) : false
+    const data = selTable.relationships.filter((t) =>
+      selTable.selectedRelationships ? selTable.selectedRelationships.has(t.relationshipName) : false,
     );
     const rows = data.map((rel) => [
       rel.relationshipName,
@@ -367,11 +402,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
               onClick={() => setIsColumnEditOpen(false)}
             />
           }
-        ></DrawerHeaderTitle>
+        >
+          Select attributes to display
+        </DrawerHeaderTitle>
       </DrawerHeader>
 
       <DrawerBody>
         <List
+          style={{ maxHeight: "200px", overflow: "none" }}
           selectionMode="multiselect"
           selectedItems={selectedColumnAttributes}
           onSelectionChange={(_, data) => setSelectedColumnAttributes(data.selectedItems)}
@@ -381,11 +419,26 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         </List>
       </DrawerBody>
 
-      <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveColumnAttributes}>
-          Apply
-        </Button>
-        <Button onClick={saveColumnAttributesDefaults}>Set Default</Button>
+      <DrawerFooter style={{ display: "flex", flexDirection: "column", width: "100%" }}>
+        <div style={{ minHeight: "150px", width: "100%" }}>
+          <Field label="Add Custom Attribute">
+            <Input
+              value={customColName}
+              onChange={(e) => setCustomColName(e.target.value)}
+              contentAfter={<Button appearance="subtle" icon={<Add12Filled />} onClick={setCustomColumn} />}
+            ></Input>
+          </Field>
+          <List>{customColAttrs()}</List>
+        </div>
+
+        <div style={{ display: "flex", width: "100%", marginTop: "10px" }}>
+          <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveColumnAttributes}>
+            Apply
+          </Button>
+          <Button onClick={saveColumnAttributesDefaults} icon={<Save24Regular />} appearance="subtle">
+            Save Defaults
+          </Button>
+        </div>
       </DrawerFooter>
     </OverlayDrawer>
   );
@@ -484,7 +537,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
               )}
               {(selectedValue as string).includes("Relationship") && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
-                  {selTable.Relationships.filter((rel) => rel.type === selectedValue).length > 0 && (
+                  {selTable.relationships.filter((rel) => rel.type === selectedValue).length > 0 && (
                     <SearchBox
                       size="small"
                       placeholder="Search Relationships"
