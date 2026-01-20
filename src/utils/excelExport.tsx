@@ -3,18 +3,18 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "./dataverse";
 import ExcelJS from "exceljs";
 
-interface excelExportProps {
+interface ExcelExportProps {
   dvsvc: dvService;
   connection: ToolBoxAPI.DataverseConnection | null;
   vm: ViewModel;
 }
 
-export class excelExport {
+export class ExcelExport {
   dvsvc: dvService;
   connection: ToolBoxAPI.DataverseConnection | null;
   vm: ViewModel;
 
-  constructor(props: excelExportProps) {
+  constructor(props: ExcelExportProps) {
     this.dvsvc = props.dvsvc;
     this.connection = props.connection;
     this.vm = props.vm;
@@ -128,7 +128,7 @@ export class excelExport {
     const sheet = workbook.addWorksheet("Solutions");
     console.log("Adding solutions for table:", table.solutions.length);
     if (!table.solutions || table.solutions.length === 0) {
-      console.log("No privileges found, fetching from dvService...");
+      console.log("No solutions found, fetching from dvService...");
       await this.dvsvc.getSolutionsForTable(table).then((solutions) => {
         table.solutions = solutions;
       });
