@@ -15,7 +15,7 @@ import {
   Subtitle2,
 } from "@fluentui/react-components";
 import { ArrowExportUpRegular, Dismiss24Regular, Save16Filled } from "@fluentui/react-icons";
-import { excelExport } from "../utils/excelExport";
+import { ExcelExport } from "../utils/excelExport";
 
 interface ExportPopoverProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -41,7 +41,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
       });
     }
     setBlockClose(true);
-    var excelExporter = new excelExport({ dvsvc: dvSvc, connection: connection, vm: vm });
+    var excelExporter = new ExcelExport({ dvsvc: dvSvc, connection: connection, vm: vm });
     console.log("Starting export...");
     await excelExporter.export(vm.selectedTables);
     setBlockClose(false);
@@ -96,7 +96,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
           >
             <Subtitle2>
               Select one or more tabs to include in the export Excel file. Each selected table will be created a a
-              seperate Workbook:
+              separate Workbook:
             </Subtitle2>
           </InfoLabel>
 

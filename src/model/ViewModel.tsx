@@ -5,7 +5,7 @@ import { Solution } from "./solution";
 export class ViewModel {
   tableMetadata: TableMeta[] = [];
   selectedTables: TableMeta[] = [];
-  columnAttributes: columnDefinition[] = [];
+  columnAttributes: ColumnDefinition[] = [];
   relationshipAttributes: RelationshipAttribute[] = [];
   tableAttributes: string[] = [];
   solutions: Solution[] = [];
@@ -29,7 +29,7 @@ export class ExcelOptions {
   }
 }
 
-export class columnDefinition {
+export class ColumnDefinition {
   name: string = "";
   custom?: boolean = false;
 }

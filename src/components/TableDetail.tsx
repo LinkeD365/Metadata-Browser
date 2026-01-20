@@ -151,7 +151,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         <ListItem key={attr.name} value={attr.name} aria-label={attr.name} >
           {attr.name} <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={() => {
             viewModel.columnAttributes = viewModel.columnAttributes.filter(
-              (a) => a.name !== attr.name && a.custom
+              (a) => a.name !== attr.name || !a.custom
             );
           }} />
         </ListItem>
@@ -409,7 +409,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
       <DrawerBody>
         <List
-          style={{ maxHeight: "200px", overflow: "none" }}
+          style={{ maxHeight: "200px", overflow: "auto" }}
           selectionMode="multiselect"
           selectedItems={selectedColumnAttributes}
           onSelectionChange={(_, data) => setSelectedColumnAttributes(data.selectedItems)}

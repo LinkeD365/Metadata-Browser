@@ -467,7 +467,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         </DrawerHeaderTitle>
       </DrawerHeader>
 
-      <DrawerBody >
+      <DrawerBody>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <ToggleButton
             onClick={() => {
