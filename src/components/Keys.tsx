@@ -4,9 +4,7 @@ import { dvService } from "../utils/dataverse";
 import { KeyMeta, TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
 
-import {
-  ColDef,
-} from "ag-grid-community";
+import { ColDef } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 
@@ -41,7 +39,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
 
     setLoadingMeta(true);
     await dvService
-      .loadKeysMetadata(selectedTable)
+      .getKeysMeta(selectedTable)
       .then((keys) => {
         console.log("Keys metadata loaded: ", keys);
         selectedTable.keys = keys;
@@ -77,14 +75,14 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
             const attr = params.data?.attributes?.find((a) => a.attributeName === keyAttr.attributeName);
             return attr?.attributeValue || "";
           },
-        } as ColDef<KeyMeta>)
+        }) as ColDef<KeyMeta>,
     );
   }, [selectedTable.keys.length]);
 
   const colDefs = React.useMemo<ColDef<KeyMeta>[]>(
     () => [{ headerName: "Key Name", field: "keyName", flex: 2 }, ...createKeyAttr],
 
-    [createKeyAttr]
+    [createKeyAttr],
   );
 
   const keyColumnGrid = (

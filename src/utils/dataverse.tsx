@@ -113,7 +113,7 @@ export class dvService {
     const solutionsData = await this.dvApi.queryData(
       "solutions?$filter=(isvisible eq true) and ismanaged eq " +
         (managed ? "true" : "false") +
-        " &$select=friendlyname,uniquename&$orderby=createdon desc"
+        " &$select=friendlyname,uniquename&$orderby=createdon desc",
     );
     const solutions: Solution[] = (solutionsData.value as any[]).map((sol: any) => {
       const solution = new Solution();
@@ -189,7 +189,7 @@ export class dvService {
     }
   }
 
-  async loadKeysMetadata(selectedTable: TableMeta): Promise<KeyMeta[]> {
+  async getKeysMeta(selectedTable: TableMeta): Promise<KeyMeta[]> {
     if (!this.connection) {
       throw new Error("No connection available");
     }
@@ -222,13 +222,13 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching keys metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
-        "error"
+        "error",
       );
       throw err;
     }
   }
 
-  async loadPrivilegesMetadata(selectedTable: TableMeta): Promise<PrivilegeMeta[]> {
+  async getPrivilegesMetadata(selectedTable: TableMeta): Promise<PrivilegeMeta[]> {
     if (!this.connection) {
       throw new Error("No connection available");
     }
@@ -261,13 +261,13 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching privileges metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
-        "error"
+        "error",
       );
       throw err;
     }
   }
 
-  async loadRelationshipMeta(selectedTable: TableMeta, type: string): Promise<RelationshipMeta[]> {
+  async getRelationshipsMeta(selectedTable: TableMeta, type: string): Promise<RelationshipMeta[]> {
     if (!this.connection) {
       throw new Error("No connection available");
     }
@@ -300,13 +300,13 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching relationship metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
-        "error"
+        "error",
       );
       throw err;
     }
   }
 
-  async loadSolutionsForTable(selectedTable: TableMeta): Promise<Solution[]> {
+  async getSolutionsForTable(selectedTable: TableMeta): Promise<Solution[]> {
     if (!this.connection) {
       throw new Error("No connection available");
     }
@@ -367,7 +367,7 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching solutions metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
-        "error"
+        "error",
       );
       throw err;
     }

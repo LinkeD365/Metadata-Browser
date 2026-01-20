@@ -2,13 +2,9 @@ import React from "react";
 import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { PrivilegeMeta, TableMeta } from "../model/tableMeta";
-import {
-  Spinner,
-} from "@fluentui/react-components";
+import { Spinner } from "@fluentui/react-components";
 
-import {
-  ColDef,
-} from "ag-grid-community";
+import { ColDef } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 
@@ -43,7 +39,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
 
     setLoadingMeta(true);
     await dvService
-      .loadPrivilegesMetadata(selectedTable)
+      .getPrivilegesMetadata(selectedTable)
       .then((privileges) => {
         console.log("Privileges metadata loaded: ", privileges);
         selectedTable.privileges = privileges;
@@ -79,14 +75,14 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
             const attr = params.data?.attributes?.find((a) => a.attributeName === keyAttr.attributeName);
             return attr?.attributeValue || "";
           },
-        } as ColDef<PrivilegeMeta>)
+        }) as ColDef<PrivilegeMeta>,
     );
   }, [selectedTable.privileges.length]);
 
   const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
     () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2 }, ...createPrivilegeAttr],
 
-    [createPrivilegeAttr]
+    [createPrivilegeAttr],
   );
 
   const privilegesGrid = (

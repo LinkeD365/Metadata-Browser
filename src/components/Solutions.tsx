@@ -3,9 +3,7 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
-import {
-  ColDef,
-} from "ag-grid-community";
+import { ColDef } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { Solution } from "../model/solution";
@@ -41,7 +39,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
 
     setLoadingMeta(true);
     await dvService
-      .loadSolutionsForTable(selectedTable)
+      .getSolutionsForTable(selectedTable)
       .then((solutions) => {
         console.log("Solutions metadata loaded: ", solutions);
         selectedTable.solutions = solutions;
@@ -83,7 +81,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       },
     ],
     // Column definitions with formatters - no reactive dependencies needed
-    []
+    [],
   );
 
   const solutionsGrid = (
