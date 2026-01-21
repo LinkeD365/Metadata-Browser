@@ -23,7 +23,7 @@
     "repository": "https://github.com/LinkeD365/Metadata-Browser",
     "website": "https://linked365.blog",
     "readmeUrl": "https://raw.githubusercontent.com/LinkeD365/Metadata-Browser/refs/heads/master/README.md",
-    "iconUrl": "https://raw.githubusercontent.com/LinkeD365/Metadata-Browser/refs/heads/master/smallIcon.png"
+    "iconUrl": "https://raw.githubusercontent.com/LinkeD365/Metadata-Browser/refs/heads/master/assets/smallIcon.png"
   },
   "engines": {
     "node": ">=18.0.0"
