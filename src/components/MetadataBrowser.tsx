@@ -232,7 +232,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
     console.log("CSV Data:\n", csvString);
-    window.toolboxAPI.utils.saveFile("tables_metadata.csv", csvString);
+    window.toolboxAPI.fileSystem.saveFile("tables_metadata.csv", csvString);
     // const csvString = [
     //   ["Header1", "Header2", "Header3"], // Specify your headers here
     //   ...data.map((item) => [item.field1, item.field2, item.field3]), // Map your data fields accordingly
