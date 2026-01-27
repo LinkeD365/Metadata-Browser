@@ -2,6 +2,8 @@ import { ColumnMeta } from "../model/columnMeta";
 import { Solution } from "../model/solution";
 import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
 
+const DEFAULT_SOLUTION_UNIQUE_NAME = "Default";
+
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
@@ -115,13 +117,15 @@ export class dvService {
         (managed ? "true" : "false") +
         " &$select=friendlyname,uniquename&$orderby=createdon desc",
     );
-    const solutions: Solution[] = (solutionsData.value as any[]).map((sol: any) => {
-      const solution = new Solution();
-      solution.solutionName = sol.friendlyname;
-      solution.uniqueName = sol.uniquename;
-      solution.solutionId = sol.solutionid;
-      return solution;
-    });
+    const solutions: Solution[] = (solutionsData.value as any[])
+      .filter((sol: any) => sol.uniquename !== DEFAULT_SOLUTION_UNIQUE_NAME)
+      .map((sol: any) => {
+        const solution = new Solution();
+        solution.solutionName = sol.friendlyname;
+        solution.uniqueName = sol.uniquename;
+        solution.solutionId = sol.solutionid;
+        return solution;
+      });
 
     return solutions;
   }
@@ -335,34 +339,36 @@ export class dvService {
       console.log("FetchXML for solutions: ", fetchXml);
       const meta = await this.dvApi.fetchXmlQuery(fetchXml);
       console.log("Solutions fetched: ", meta);
-      const solutions: Solution[] = (meta.value as any).map((solution: any) => {
-        // console.log("Processing Solution: ", solution);
-        const solutionMeta = new Solution();
-        solutionMeta.solutionName = solution.friendlyname;
-        solutionMeta.uniqueName = solution.uniquename;
-        solutionMeta.solutionId = solution.solutionid;
-        solutionMeta.description = solution.description;
-        solutionMeta.version = solution.version;
-        solutionMeta.isManaged = solution.ismanaged;
-        solutionMeta.subcomponents = solution["sc.rootcomponentbehavior"];
-        // solutionMeta.attributes = [];
-        // Object.keys(solution).forEach((prop) => {
-        //   const value = solution[prop];
-        //   if (typeof value === "function") return;
-        //   try {
-        //     solutionMeta.attributes.push({
-        //       attributeName: prop,
-        //       attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-        //     });
-        //   } catch {
-        //     solutionMeta.attributes.push({
-        //       attributeName: prop,
-        //       attributeValue: String(value),
-        //     });
-        //   }
-        // });
-        return solutionMeta;
-      });
+      const solutions: Solution[] = (meta.value as any)
+        .filter((solution: any) => solution.uniquename !== DEFAULT_SOLUTION_UNIQUE_NAME)
+        .map((solution: any) => {
+          // console.log("Processing Solution: ", solution);
+          const solutionMeta = new Solution();
+          solutionMeta.solutionName = solution.friendlyname;
+          solutionMeta.uniqueName = solution.uniquename;
+          solutionMeta.solutionId = solution.solutionid;
+          solutionMeta.description = solution.description;
+          solutionMeta.version = solution.version;
+          solutionMeta.isManaged = solution.ismanaged;
+          solutionMeta.subcomponents = solution["sc.rootcomponentbehavior"];
+          // solutionMeta.attributes = [];
+          // Object.keys(solution).forEach((prop) => {
+          //   const value = solution[prop];
+          //   if (typeof value === "function") return;
+          //   try {
+          //     solutionMeta.attributes.push({
+          //       attributeName: prop,
+          //       attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+          //     });
+          //   } catch {
+          //     solutionMeta.attributes.push({
+          //       attributeName: prop,
+          //       attributeValue: String(value),
+          //     });
+          //   }
+          // });
+          return solutionMeta;
+        });
       return solutions;
     } catch (err) {
       this.onLog(
