@@ -2,6 +2,8 @@ import { ColumnMeta } from "../model/columnMeta";
 import { Solution } from "../model/solution";
 import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
 
+const DEFAULT_SOLUTION_UNIQUE_NAME = "Default";
+
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
@@ -116,7 +118,7 @@ export class dvService {
         " &$select=friendlyname,uniquename&$orderby=createdon desc",
     );
     const solutions: Solution[] = (solutionsData.value as any[])
-      .filter((sol: any) => sol.uniquename !== "Default")
+      .filter((sol: any) => sol.uniquename !== DEFAULT_SOLUTION_UNIQUE_NAME)
       .map((sol: any) => {
         const solution = new Solution();
         solution.solutionName = sol.friendlyname;
@@ -338,7 +340,7 @@ export class dvService {
       const meta = await this.dvApi.fetchXmlQuery(fetchXml);
       console.log("Solutions fetched: ", meta);
       const solutions: Solution[] = (meta.value as any)
-        .filter((solution: any) => solution.uniquename !== "Default")
+        .filter((solution: any) => solution.uniquename !== DEFAULT_SOLUTION_UNIQUE_NAME)
         .map((solution: any) => {
           // console.log("Processing Solution: ", solution);
           const solutionMeta = new Solution();
