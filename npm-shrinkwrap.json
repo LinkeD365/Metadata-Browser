@@ -21,7 +21,7 @@
         "react-json-pretty": "^2.2.0"
       },
       "devDependencies": {
-        "@pptb/types": "^1.0.17",
+        "@pptb/types": "^1.0.19",
         "@types/react": "^18.3.12",
         "@types/react-dom": "^18.3.1",
         "@vitejs/plugin-react": "^4.3.4",
@@ -2486,9 +2486,9 @@
       }
     },
     "node_modules/@pptb/types": {
-      "version": "1.0.17",
-      "resolved": "https://registry.npmjs.org/@pptb/types/-/types-1.0.17.tgz",
-      "integrity": "sha512-QKXhPijdftsVb8NGD7Ce46toqfqes4Sw63P07xEK/PzhEAAuTMrjZjcBDqnLlqIYggPzJUOv/fFnBZ/bEkNoRQ==",
+      "version": "1.0.19",
+      "resolved": "https://registry.npmjs.org/@pptb/types/-/types-1.0.19.tgz",
+      "integrity": "sha512-1nzI65TZEcP5t672G8T3uzheDI5az7Q58HGOq7F2wh0oxcbLKjSfarD13cNKR01slyBIUTNUF5W3pNHJTLYHYA==",
       "dev": true,
       "license": "GPL-3.0"
     },

@@ -403,6 +403,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         onSelectionChanged={tableSelected}
         getRowId={(params) => params.data?.tableName ?? ""}
         onRowDoubleClicked={(event) => handleRowDoubleClick(event.data!)}
+        enableCellTextSelection={true}
       />
     </div>
   );

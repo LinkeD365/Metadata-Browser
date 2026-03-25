@@ -148,12 +148,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     return viewModel.columnAttributes
       .filter((attr) => attr.custom)
       .map((attr) => (
-        <ListItem key={attr.name} value={attr.name} aria-label={attr.name} >
-          {attr.name} <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={() => {
-            viewModel.columnAttributes = viewModel.columnAttributes.filter(
-              (a) => a.name !== attr.name || !a.custom
-            );
-          }} />
+        <ListItem key={attr.name} value={attr.name} aria-label={attr.name}>
+          {attr.name}{" "}
+          <Button
+            appearance="subtle"
+            icon={<Dismiss24Regular />}
+            onClick={() => {
+              viewModel.columnAttributes = viewModel.columnAttributes.filter((a) => a.name !== attr.name || !a.custom);
+            }}
+          />
         </ListItem>
       ));
   }
@@ -228,6 +231,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         defaultColDef={defaultColDefs}
         domLayout="normal"
         getRowId={(params) => params.data?.attributeName ?? ""}
+        enableCellTextSelection={true}
       />
     </div>
   );
@@ -243,7 +247,9 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   function saveColumnAttributes(): void {
     const customCols = JSON.stringify(viewModel.columnAttributes.filter((attr) => attr.custom));
     console.log("Custom Columns to retain: ", customCols);
-    viewModel.columnAttributes = selectedColumnAttributes.map((id) => ({ name: id.toString(), custom: false })).concat(JSON.parse(customCols));
+    viewModel.columnAttributes = selectedColumnAttributes
+      .map((id) => ({ name: id.toString(), custom: false }))
+      .concat(JSON.parse(customCols));
     setIsColumnEditOpen(false);
   }
 
