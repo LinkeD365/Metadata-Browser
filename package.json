@@ -4,6 +4,7 @@
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
   "author": "LinkeD365",
+  "icon": "Linked365Logo.svg",
   "repository": {
     "url": "https://github.com/LinkeD365/Metadata-Browser",
     "type": "git"
@@ -16,6 +17,10 @@
     {
       "name": "LinkeD365",
       "url": "https://github.com/LinkeD365"
+    },
+    {
+      "name": "MsCRMTools",
+      "url": "https://github.com/MsCRMTools"
     }
   ],
   "license": "MIT",
