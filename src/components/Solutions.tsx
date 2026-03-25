@@ -93,6 +93,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         defaultColDef={defaultColDefs}
         domLayout="normal"
         getRowId={(params) => params.data?.uniqueName ?? ""}
+        enableCellTextSelection={true}
       />
     </div>
   );

@@ -94,6 +94,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
         defaultColDef={defaultColDefs}
         domLayout="normal"
         getRowId={(params) => params.data?.privilegeName ?? ""}
+        enableCellTextSelection={true}
       />
     </div>
   );

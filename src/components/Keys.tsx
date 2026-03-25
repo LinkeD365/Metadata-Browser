@@ -94,6 +94,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         defaultColDef={defaultColDefs}
         domLayout="normal"
         getRowId={(params) => params.data?.keyName ?? ""}
+        enableCellTextSelection={true}
       />
     </div>
   );

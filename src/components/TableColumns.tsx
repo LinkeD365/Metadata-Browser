@@ -4,11 +4,7 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner, TableRowId } from "@fluentui/react-components";
-import {
-  ColDef,
-  SelectionChangedEvent,
-  RowSelectionOptions,
-} from "ag-grid-community";
+import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 
@@ -38,7 +34,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         (t) =>
           t.displayName.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? "") ||
           t.columnName.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? "") ||
-          t.dataType.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? "")
+          t.dataType.toLowerCase().includes(selectedTable.columnSearch?.toLowerCase() ?? ""),
       );
   }, [selectedTable.columnSearch, selectedTable.columns]);
 
@@ -94,18 +90,20 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
       { headerName: "Column Name", field: "displayName" },
       { headerName: "Logical Name", field: "columnName" },
       { headerName: "Data Type", field: "dataType" },
-      ...viewModel.columnAttributes.filter(attr => !attr.custom).map(
-        (colAttr) =>
-          ({
-            headerName: colAttr.name,
-            valueGetter: (params) => {
-              const attr = params.data?.attributes?.find((a) => a.attributeName === colAttr.name);
-              return attr?.attributeValue || "";
-            },
-          } as ColDef<ColumnMeta>)
-      ),
+      ...viewModel.columnAttributes
+        .filter((attr) => !attr.custom)
+        .map(
+          (colAttr) =>
+            ({
+              headerName: colAttr.name,
+              valueGetter: (params) => {
+                const attr = params.data?.attributes?.find((a) => a.attributeName === colAttr.name);
+                return attr?.attributeValue || "";
+              },
+            }) as ColDef<ColumnMeta>,
+        ),
     ],
-    [viewModel.columnAttributes]
+    [viewModel.columnAttributes],
   );
 
   function colsSelected(event: SelectionChangedEvent<ColumnMeta>): void {
@@ -129,6 +127,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         rowSelection={rowSelection}
         onSelectionChanged={colsSelected}
         getRowId={(params) => params.data?.columnName ?? ""}
+        enableCellTextSelection={true}
       />
     </div>
   );

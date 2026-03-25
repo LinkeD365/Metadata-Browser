@@ -123,6 +123,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
         rowSelection={rowSelection}
         onSelectionChanged={relsSelected}
         getRowId={(params) => params.data?.relationshipName ?? ""}
+        enableCellTextSelection={true}
       />
     </div>
   );

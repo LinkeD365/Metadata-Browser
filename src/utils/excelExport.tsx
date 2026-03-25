@@ -21,7 +21,6 @@ export class ExcelExport {
   }
 
   async export(tables: TableMeta[]): Promise<void> {
-    console.log("Beginning export of tables:", tables);
     for (const table of tables) {
       console.log(`Exporting table: ${table.displayName}`);
 
