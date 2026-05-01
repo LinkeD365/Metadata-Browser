@@ -65,7 +65,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
 
   const colDefs = React.useMemo<ColDef<Solution>[]>(
     () => [
-      { headerName: "Name", field: "solutionName", flex: 2 },
+      { headerName: "Name", field: "solutionName", flex: 2, sort: "asc" },
       { headerName: "Unique Name", field: "uniqueName" },
       { headerName: "Description", field: "description" },
       { headerName: "Version", field: "version" },

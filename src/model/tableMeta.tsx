@@ -1,6 +1,9 @@
 import { makeAutoObservable } from "mobx";
 import { ColumnMeta } from "./columnMeta";
 import { Solution } from "./solution";
+import { ViewMeta } from "./view";
+import { BusinessProcessFlowMeta } from "./businessProcessFlow";
+import { BusinessRuleMeta } from "./businessRule";
 
 export class TableMeta {
   tableName: string;
@@ -18,6 +21,13 @@ export class TableMeta {
   relationshipSearch?: string;
   privileges: PrivilegeMeta[] = [];
   solutions: Solution[] = [];
+  views: ViewMeta[] = [];
+  viewSearch?: string;
+  businessProcessFlows: BusinessProcessFlowMeta[] = [];
+  businessProcessFlowSearch?: string;
+  businessRules: BusinessRuleMeta[] = [];
+  businessRuleSearch?: string;
+  typeCode: any;
 
   constructor() {
     this.tableName = "";

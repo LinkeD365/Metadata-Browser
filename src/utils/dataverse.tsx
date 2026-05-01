@@ -1,6 +1,9 @@
 import { ColumnMeta } from "../model/columnMeta";
+import { BusinessProcessFlowMeta } from "../model/businessProcessFlow";
+import { BusinessRuleMeta } from "../model/businessRule";
 import { Solution } from "../model/solution";
 import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
+import { ViewMeta } from "../model/view";
 
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -36,6 +39,7 @@ export class dvService {
       tableMeta.displayName = table.DisplayName?.LocalizedLabels?.[0]?.Label || table.LogicalName;
       tableMeta.metaId = table.MetadataId || "";
       tableMeta.attributes = [];
+      tableMeta.typeCode = table.ObjectTypeCode;
       Object.keys(table).forEach((prop) => {
         const value = table[prop];
         if (typeof value === "function") return;
@@ -154,7 +158,8 @@ export class dvService {
           tm.displayName = src?.DisplayName?.LocalizedLabels?.[0]?.Label || tm.tableName;
           tm.metaId = src?.MetadataId || "";
           tm.attributes = [];
-
+          tm.typeCode = src?.ObjectTypeCode;
+          console.log("Processing table metadata for: ", entityMeta);
           Object.keys(src || {}).forEach((prop) => {
             const value = src[prop];
             if (typeof value === "function") return;
@@ -367,6 +372,174 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching solutions metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error",
+      );
+      throw err;
+    }
+  }
+
+  async getViewsForTable(selectedTable: TableMeta): Promise<ViewMeta[]> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    try {
+      this.onLog(`Fetching views metadata for table: ${selectedTable.tableName}`, "info");
+
+      const systemViewsQuery = "savedqueries?$filter=returnedtypecode eq '" + selectedTable.tableName + "'";
+
+      const personalViewsQuery = "userqueries?$filter=returnedtypecode eq '" + selectedTable.tableName + "'";
+
+      const [systemViewsData, personalViewsData] = await Promise.all([
+        this.dvApi.queryData(systemViewsQuery),
+        this.dvApi.queryData(personalViewsQuery),
+      ]);
+
+      const systemViews = (systemViewsData.value as any[]).map((view: any) => {
+        const viewMeta = new ViewMeta();
+        viewMeta.viewName = view.name;
+        viewMeta.type = "System";
+
+        Object.keys(view).forEach((prop) => {
+          const value = view[prop];
+          if (typeof value === "function") return;
+          try {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+
+        return viewMeta;
+      });
+
+      const personalViews = (personalViewsData.value as any[]).map((view: any) => {
+        const viewMeta = new ViewMeta();
+        viewMeta.viewName = view.name;
+        viewMeta.type = "Personal";
+
+        Object.keys(view).forEach((prop) => {
+          const value = view[prop];
+          if (typeof value === "function") return;
+          try {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+
+        return viewMeta;
+      });
+
+      return [...systemViews, ...personalViews];
+    } catch (err) {
+      this.onLog(
+        `Error fetching views metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error",
+      );
+      throw err;
+    }
+  }
+
+  async getBusinessProcessFlowsForTable(selectedTable: TableMeta): Promise<BusinessProcessFlowMeta[]> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    try {
+      this.onLog(`Fetching business process flows for table: ${selectedTable.tableName}`, "info");
+
+      const bpfQuery = "workflows?$filter=category eq 4 and primaryentity eq '" + selectedTable.tableName + "'";
+
+      const bpfData = await this.dvApi.queryData(bpfQuery);
+
+      const flows = (bpfData.value as any[]).map((flow: any) => {
+        const bpfMeta = new BusinessProcessFlowMeta();
+        bpfMeta.flowName = flow.name || flow.uniquename || "";
+        bpfMeta.type = "Business Process Flow";
+
+        Object.keys(flow).forEach((prop) => {
+          const value = flow[prop];
+          if (typeof value === "function") return;
+          try {
+            bpfMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            bpfMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+
+        return bpfMeta;
+      });
+
+      return flows;
+    } catch (err) {
+      this.onLog(
+        `Error fetching business process flows for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error",
+      );
+      throw err;
+    }
+  }
+
+  async getBusinessRulesForTable(selectedTable: TableMeta): Promise<BusinessRuleMeta[]> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    try {
+      this.onLog(`Fetching business rules for table: ${selectedTable.tableName}`, "info");
+
+      const businessRulesQuery =
+        "workflows?$filter=category eq 2 and primaryentity eq '" + selectedTable.tableName + "'";
+
+      const businessRulesData = await this.dvApi.queryData(businessRulesQuery);
+
+      const rules = (businessRulesData.value as any[]).map((rule: any) => {
+        const ruleMeta = new BusinessRuleMeta();
+        ruleMeta.ruleName = rule.name || rule.uniquename || "";
+        ruleMeta.type = "Business Rule";
+
+        Object.keys(rule).forEach((prop) => {
+          const value = rule[prop];
+          if (typeof value === "function") return;
+          try {
+            ruleMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            ruleMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
+
+        return ruleMeta;
+      });
+
+      return rules;
+    } catch (err) {
+      this.onLog(
+        `Error fetching business rules for table ${selectedTable.tableName}: ${(err as Error).message}`,
         "error",
       );
       throw err;

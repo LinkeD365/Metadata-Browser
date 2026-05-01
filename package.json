@@ -37,14 +37,15 @@
     "dev": "vite",
     "preview": "vite preview",
     "watch": "vite build --watch",
-    "finalize-package": "npm shrinkwrap"
+    "finalize-package": "npm shrinkwrap",
+    "validate": "pptb-validate"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.72.7",
     "@fluentui/react-icons": "^2.0.315",
     "ag-grid-community": "^35.0.0",
     "ag-grid-react": "^35.0.0",
-    "exceljs": "^4.4.0",
+    "exceljs": "^3.4.0",
     "mobx": "^6.15.0",
     "mobx-react": "^9.2.1",
     "react": "^18.3.1",
@@ -52,7 +53,7 @@
     "react-json-pretty": "^2.2.0"
   },
   "devDependencies": {
-    "@pptb/types": "^1.0.19",
+    "@pptb/types": "^1.2.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

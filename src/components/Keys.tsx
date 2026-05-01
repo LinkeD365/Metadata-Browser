@@ -80,7 +80,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   }, [selectedTable.keys.length]);
 
   const colDefs = React.useMemo<ColDef<KeyMeta>[]>(
-    () => [{ headerName: "Key Name", field: "keyName", flex: 2 }, ...createKeyAttr],
+    () => [{ headerName: "Key Name", field: "keyName", flex: 2, sort: "asc" }, ...createKeyAttr],
 
     [createKeyAttr],
   );
