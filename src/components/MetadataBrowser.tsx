@@ -6,14 +6,8 @@ import { agGridTheme } from "../config/agGridConfig";
 
 import {
   Button,
-  DrawerBody,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerHeaderTitle,
   InputOnChangeData,
   Label,
-  List,
-  ListItem,
   makeStyles,
   Menu,
   MenuButtonProps,
@@ -21,7 +15,6 @@ import {
   MenuList,
   MenuPopover,
   MenuTrigger,
-  OverlayDrawer,
   SearchBox,
   SearchBoxChangeEvent,
   SelectionItemId,
@@ -33,7 +26,6 @@ import {
   TableRowId,
   TabList,
   TabValue,
-  ToggleButton,
   tokens,
   Tooltip,
 } from "@fluentui/react-components";
@@ -42,14 +34,10 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
-import {
-  ColumnEditRegular,
-  Dismiss24Regular,
-  EditRegular,
-  LockClosedRegular,
-  TextboxMoreRegular,
-} from "@fluentui/react-icons";
+import { ColumnEditRegular, TextboxMoreRegular } from "@fluentui/react-icons";
 import { ExportPopover } from "./ExportPopover";
+import { TableColumnDrawer } from "./TableColumnDrawer";
+import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -72,6 +60,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const [selectedTab, setSelectedTab] = React.useState<TabValue>("tables");
   const [managed, setManaged] = React.useState<boolean>(false);
   const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
+  const [solutionQuery, setSolutionQuery] = React.useState<string>("");
   const [tableQuery, setTableQuery] = React.useState<string>("");
   const [selectedTables, setSelectedTables] = React.useState<Set<TableRowId>>();
   const [isExportPopoverOpen, setIsExportPopoverOpen] = React.useState<boolean>(false);
@@ -147,40 +136,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
           setLoadingMeta(false);
         });
     }
-  }
-
-  function tableAttributeList() {
-    if (!vm.tableMetadata || vm.tableMetadata.length === 0 || vm.tableMetadata[0].attributes.length === 0) {
-      return [];
-    }
-    return vm.tableMetadata[0].attributes
-      .filter((attr) => attr.attributeName != "DisplayName" && attr.attributeName != "LogicalName")
-      .map((attr) => (
-        <ListItem
-          key={attr.attributeName}
-          value={attr.attributeName}
-          aria-label={attr.attributeName}
-          checkmark={{ "aria-label": attr.attributeName }}
-        >
-          {attr.attributeName}
-        </ListItem>
-      ));
-  }
-
-  function solutionSelectList() {
-    if (!vm.solutions || vm.solutions.length === 0) {
-      return [];
-    }
-    return vm.solutions.map((solution) => (
-      <ListItem
-        key={solution.solutionId}
-        value={solution.solutionId}
-        aria-label={solution.solutionName}
-        checkmark={{ "aria-label": solution.solutionName }}
-      >
-        {solution.solutionName} ({solution.uniqueName})
-      </ListItem>
-    ));
   }
 
   const searchTables = async (_searchQuery: string) => {
@@ -357,6 +312,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         headerName: "Table Name",
         field: "displayName",
         flex: 2,
+        sort: "asc",
       },
       {
         headerName: "Logical Name",
@@ -412,113 +368,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   //   return <div>Loading metadata...</div>;
   // }
 
-  const tableColumnDrawer = (
-    <OverlayDrawer
-      position="end"
-      open={isTableColumnEditOpen}
-      onOpenChange={(_, { open }) => setIsTableColumnEditOpen(open)}
-    >
-      <DrawerHeader>
-        <DrawerHeaderTitle
-          action={
-            <Button
-              appearance="subtle"
-              aria-label="Close"
-              icon={<Dismiss24Regular />}
-              onClick={() => setIsTableColumnEditOpen(false)}
-            />
-          }
-        ></DrawerHeaderTitle>
-      </DrawerHeader>
-
-      <DrawerBody>
-        <List
-          selectionMode="multiselect"
-          selectedItems={selectedTableCols}
-          onSelectionChange={(_, data) => setSelectedTableCols(data.selectedItems)}
-          aria-label="List of attributes to display for columns"
-        >
-          {tableAttributeList()}
-        </List>
-      </DrawerBody>
-
-      <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveTableColumnSelection}>
-          Apply
-        </Button>
-        <Button onClick={saveDefaultTableColumnSelection}>Set Default</Button>
-      </DrawerFooter>
-    </OverlayDrawer>
-  );
-
-  const solutionSelDrawer = (
-    <OverlayDrawer position="end" open={isSolutionSelOpen} onOpenChange={(_, { open }) => setIsSolutionSelOpen(open)}>
-      <DrawerHeader>
-        <DrawerHeaderTitle
-          action={
-            <Button
-              appearance="subtle"
-              aria-label="Close"
-              icon={<Dismiss24Regular />}
-              onClick={() => setIsSolutionSelOpen(false)}
-            />
-          }
-        >
-          Select a Solution
-        </DrawerHeaderTitle>
-      </DrawerHeader>
-
-      <DrawerBody>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <ToggleButton
-            onClick={() => {
-              setManaged(false);
-              //onLog("Managed filter set to TRUE", "info");
-            }}
-            checked={!managed}
-            shape="circular"
-            size="small"
-            appearance="subtle"
-            aria-label="Show unmanaged solutions"
-            title="Show Unmanaged"
-            icon={<EditRegular />}
-          >
-            Unmanaged
-          </ToggleButton>
-
-          <ToggleButton
-            onClick={() => {
-              setManaged(true);
-            }}
-            checked={managed}
-            shape="circular"
-            size="small"
-            appearance="subtle"
-            aria-label="Show managed solutions"
-            title="Show Managed"
-            icon={<LockClosedRegular />}
-          >
-            Managed
-          </ToggleButton>
-        </div>
-        <List
-          selectionMode="single"
-          selectedItems={selectedSolutionIds}
-          onSelectionChange={(_, data) => setSelectedSolutionIds(data.selectedItems)}
-          aria-label="List of solutions"
-        >
-          <div style={{ fontSize: "small" }}>{solutionSelectList()}</div>
-        </List>
-      </DrawerBody>
-
-      <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveSolutionSelection}>
-          Select
-        </Button>
-      </DrawerFooter>
-    </OverlayDrawer>
-  );
-
   const allTablesMenu = (
     <Menu positioning="below-end">
       <MenuTrigger disableButtonEnhancement>
@@ -557,8 +406,27 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   return (
     <div>
-      {tableColumnDrawer}
-      {solutionSelDrawer}
+      <TableColumnDrawer
+        open={isTableColumnEditOpen}
+        onOpenChange={setIsTableColumnEditOpen}
+        tableMetadata={vm.tableMetadata}
+        selectedTableCols={selectedTableCols}
+        onSelectedTableColsChange={setSelectedTableCols}
+        onApply={saveTableColumnSelection}
+        onSetDefault={saveDefaultTableColumnSelection}
+      />
+      <SolutionSelectorDrawer
+        open={isSolutionSelOpen}
+        onOpenChange={setIsSolutionSelOpen}
+        managed={managed}
+        onManagedChange={setManaged}
+        solutionQuery={solutionQuery}
+        onSolutionQueryChange={setSolutionQuery}
+        selectedSolutionIds={selectedSolutionIds}
+        onSelectedSolutionIdsChange={setSelectedSolutionIds}
+        solutions={vm.solutions}
+        onSelect={saveSolutionSelection}
+      />
       <div className={styles.root}>
         <TabList
           style={{ position: "sticky", top: 0, zIndex: 10 }}

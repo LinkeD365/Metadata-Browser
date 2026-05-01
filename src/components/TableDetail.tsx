@@ -39,6 +39,9 @@ import { Keys } from "./Keys";
 import { Relationships } from "./Relationships";
 import { Privileges } from "./Privileges";
 import { Solutions } from "./Solutions";
+import { Views } from "./Views";
+import { BusinessProcessFlows } from "./BusinessProcessFlows";
+import { BusinessRules } from "./BusinessRules";
 import { ColDef } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
@@ -65,10 +68,18 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const [isColumnEditOpen, setIsColumnEditOpen] = React.useState(false);
   const [customColName, setCustomColName] = React.useState("");
   const [isRelationshipsColumnsOpen, setIsRelationshipsColumnsOpen] = React.useState(false);
+  const [isViewColumnsOpen, setIsViewColumnsOpen] = React.useState(false);
+  const [isBusinessProcessFlowColumnsOpen, setIsBusinessProcessFlowColumnsOpen] = React.useState(false);
+  const [isBusinessRuleColumnsOpen, setIsBusinessRuleColumnsOpen] = React.useState(false);
   const [selectedColumnAttributes, setSelectedColumnAttributes] = React.useState<SelectionItemId[]>(
     viewModel.columnAttributes.map((attr) => attr.name as SelectionItemId),
   );
   const [selectedRelationshipAttributes, setSelectedRelationshipAttributes] = React.useState<SelectionItemId[]>([]);
+  const [selectedViewAttributes, setSelectedViewAttributes] = React.useState<SelectionItemId[]>([]);
+  const [selectedBusinessProcessFlowAttributes, setSelectedBusinessProcessFlowAttributes] = React.useState<
+    SelectionItemId[]
+  >([]);
+  const [selectedBusinessRuleAttributes, setSelectedBusinessRuleAttributes] = React.useState<SelectionItemId[]>([]);
 
   React.useEffect(() => {
     if (!isRelationshipsColumnsOpen) return;
@@ -79,6 +90,21 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       : [];
     setSelectedRelationshipAttributes(attrs);
   }, [isRelationshipsColumnsOpen, selectedValue, viewModel.relationshipAttributes]);
+
+  React.useEffect(() => {
+    if (!isViewColumnsOpen) return;
+    setSelectedViewAttributes(viewModel.viewAttributes.map((a) => a as SelectionItemId));
+  }, [isViewColumnsOpen, viewModel.viewAttributes]);
+
+  React.useEffect(() => {
+    if (!isBusinessProcessFlowColumnsOpen) return;
+    setSelectedBusinessProcessFlowAttributes(viewModel.businessProcessFlowAttributes.map((a) => a as SelectionItemId));
+  }, [isBusinessProcessFlowColumnsOpen, viewModel.businessProcessFlowAttributes]);
+
+  React.useEffect(() => {
+    if (!isBusinessRuleColumnsOpen) return;
+    setSelectedBusinessRuleAttributes(viewModel.businessRuleAttributes.map((a) => a as SelectionItemId));
+  }, [isBusinessRuleColumnsOpen, viewModel.businessRuleAttributes]);
   const [selTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
   const [searchAttr, setSearchAttr] = React.useState<string>("");
 
@@ -97,6 +123,18 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     selTable.relationshipSearch = _searchQuery;
   };
   const debouncedSearchRels = React.useCallback(debounce(searchRelationships, 300), []);
+  const searchViews = async (_searchQuery: string) => {
+    selTable.viewSearch = _searchQuery;
+  };
+  const debouncedSearchViews = React.useCallback(debounce(searchViews, 300), []);
+  const searchBusinessProcessFlows = async (_searchQuery: string) => {
+    selTable.businessProcessFlowSearch = _searchQuery;
+  };
+  const debouncedSearchBusinessProcessFlows = React.useCallback(debounce(searchBusinessProcessFlows, 300), []);
+  const searchBusinessRules = async (_searchQuery: string) => {
+    selTable.businessRuleSearch = _searchQuery;
+  };
+  const debouncedSearchBusinessRules = React.useCallback(debounce(searchBusinessRules, 300), []);
 
   function columnSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     //console.log("Table search input: ", columnQuery);
@@ -106,6 +144,18 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   function relationshipSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     //console.log("Table search input: ", columnQuery);
     debouncedSearchRels(data.value ?? "");
+  }
+
+  function viewsSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    debouncedSearchViews(data.value ?? "");
+  }
+
+  function businessProcessFlowsSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    debouncedSearchBusinessProcessFlows(data.value ?? "");
+  }
+
+  function businessRulesSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
+    debouncedSearchBusinessRules(data.value ?? "");
   }
 
   const searchAttributes = async (_searchQuery: string) => {
@@ -183,6 +233,71 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       ));
   }
 
+  function viewAttributes() {
+    if (!selTable.views || selTable.views.length === 0 || selTable.views[0].attributes.length === 0) {
+      return [];
+    }
+
+    return selTable.views[0].attributes
+      .filter((attr) => attr.attributeName !== "name" && attr.attributeName !== "returnedtypecode")
+      .map((attr) => (
+        <ListItem
+          key={attr.attributeName}
+          value={attr.attributeName}
+          aria-label={attr.attributeName}
+          checkmark={{ "aria-label": attr.attributeName }}
+        >
+          {attr.attributeName}
+        </ListItem>
+      ));
+  }
+
+  function businessProcessFlowAttributes() {
+    if (
+      !selTable.businessProcessFlows ||
+      selTable.businessProcessFlows.length === 0 ||
+      selTable.businessProcessFlows[0].attributes.length === 0
+    ) {
+      return [];
+    }
+
+    return selTable.businessProcessFlows[0].attributes
+      .filter((attr) => attr.attributeName !== "name")
+      .map((attr) => (
+        <ListItem
+          key={attr.attributeName}
+          value={attr.attributeName}
+          aria-label={attr.attributeName}
+          checkmark={{ "aria-label": attr.attributeName }}
+        >
+          {attr.attributeName}
+        </ListItem>
+      ));
+  }
+
+  function businessRuleAttributes() {
+    if (
+      !selTable.businessRules ||
+      selTable.businessRules.length === 0 ||
+      selTable.businessRules[0].attributes.length === 0
+    ) {
+      return [];
+    }
+
+    return selTable.businessRules[0].attributes
+      .filter((attr) => attr.attributeName !== "name")
+      .map((attr) => (
+        <ListItem
+          key={attr.attributeName}
+          value={attr.attributeName}
+          aria-label={attr.attributeName}
+          checkmark={{ "aria-label": attr.attributeName }}
+        >
+          {attr.attributeName}
+        </ListItem>
+      ));
+  }
+
   const filteredAttributes: Attribute[] = React.useMemo(() => {
     if (!selTable || searchAttr.trim() === "") {
       return selTable.attributes;
@@ -202,7 +317,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }, []);
   const colDefs = React.useMemo<ColDef<Attribute>[]>(
     () => [
-      { headerName: "Attribute Name", field: "attributeName" },
+      { headerName: "Attribute Name", field: "attributeName", sort: "asc" },
       {
         headerName: "Value",
         field: "attributeValue",
@@ -242,6 +357,18 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
   function editRelationshipColumnsClick(): void {
     setIsRelationshipsColumnsOpen(true);
+  }
+
+  function editViewColumnsClick(): void {
+    setIsViewColumnsOpen(true);
+  }
+
+  function editBusinessProcessFlowColumnsClick(): void {
+    setIsBusinessProcessFlowColumnsOpen(true);
+  }
+
+  function editBusinessRuleColumnsClick(): void {
+    setIsBusinessRuleColumnsOpen(true);
   }
 
   function saveColumnAttributes(): void {
@@ -306,6 +433,82 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       });
     }
   }
+
+  function saveViewAttrSelection(): void {
+    viewModel.viewAttributes = selectedViewAttributes.map((id) => id.toString());
+    setIsViewColumnsOpen(false);
+  }
+
+  async function saveViewAttributesDefaults(): Promise<void> {
+    saveViewAttrSelection();
+    try {
+      await window.toolboxAPI.settings.set("defaultViewAttributes", JSON.stringify(viewModel.viewAttributes));
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: "Default view attributes have been saved.",
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: `Failed to save default view attributes. error: ${error}`,
+        type: "error",
+      });
+    }
+  }
+
+  function saveBusinessProcessFlowAttrSelection(): void {
+    viewModel.businessProcessFlowAttributes = selectedBusinessProcessFlowAttributes.map((id) => id.toString());
+    setIsBusinessProcessFlowColumnsOpen(false);
+  }
+
+  async function saveBusinessProcessFlowAttributesDefaults(): Promise<void> {
+    saveBusinessProcessFlowAttrSelection();
+    try {
+      await window.toolboxAPI.settings.set(
+        "defaultBusinessProcessFlowAttributes",
+        JSON.stringify(viewModel.businessProcessFlowAttributes),
+      );
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: "Default business process flow attributes have been saved.",
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: `Failed to save default business process flow attributes. error: ${error}`,
+        type: "error",
+      });
+    }
+  }
+
+  function saveBusinessRuleAttrSelection(): void {
+    viewModel.businessRuleAttributes = selectedBusinessRuleAttributes.map((id) => id.toString());
+    setIsBusinessRuleColumnsOpen(false);
+  }
+
+  async function saveBusinessRuleAttributesDefaults(): Promise<void> {
+    saveBusinessRuleAttrSelection();
+    try {
+      await window.toolboxAPI.settings.set(
+        "defaultBusinessRuleAttributes",
+        JSON.stringify(viewModel.businessRuleAttributes),
+      );
+      window.toolboxAPI.utils.showNotification({
+        title: "Default Saved",
+        body: "Default business rule attributes have been saved.",
+        type: "success",
+      });
+    } catch (error) {
+      window.toolboxAPI.utils.showNotification({
+        title: "Save Failed",
+        body: `Failed to save default business rule attributes. error: ${error}`,
+        type: "error",
+      });
+    }
+  }
+
   function setCustomColumn(): void {
     if (customColName.trim() === "") {
       return;
@@ -490,10 +693,132 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     </OverlayDrawer>
   );
 
+  const viewDrawer = (
+    <OverlayDrawer position="end" open={isViewColumnsOpen} onOpenChange={(_, { open }) => setIsViewColumnsOpen(open)}>
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsViewColumnsOpen(false)}
+            />
+          }
+        >
+          <Body1>Views columns</Body1>
+        </DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <List
+          selectionMode="multiselect"
+          selectedItems={selectedViewAttributes}
+          onSelectionChange={(_, data) => setSelectedViewAttributes(data.selectedItems)}
+          aria-label="List of attributes to display for views"
+        >
+          {viewAttributes()}
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveViewAttrSelection}>
+          Save
+        </Button>
+        <Button onClick={saveViewAttributesDefaults}>Set Default</Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
+
+  const businessProcessFlowDrawer = (
+    <OverlayDrawer
+      position="end"
+      open={isBusinessProcessFlowColumnsOpen}
+      onOpenChange={(_, { open }) => setIsBusinessProcessFlowColumnsOpen(open)}
+    >
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsBusinessProcessFlowColumnsOpen(false)}
+            />
+          }
+        >
+          <Body1>Business Process Flows columns</Body1>
+        </DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <List
+          selectionMode="multiselect"
+          selectedItems={selectedBusinessProcessFlowAttributes}
+          onSelectionChange={(_, data) => setSelectedBusinessProcessFlowAttributes(data.selectedItems)}
+          aria-label="List of attributes to display for business process flows"
+        >
+          {businessProcessFlowAttributes()}
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveBusinessProcessFlowAttrSelection}>
+          Save
+        </Button>
+        <Button onClick={saveBusinessProcessFlowAttributesDefaults}>Set Default</Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
+
+  const businessRuleDrawer = (
+    <OverlayDrawer
+      position="end"
+      open={isBusinessRuleColumnsOpen}
+      onOpenChange={(_, { open }) => setIsBusinessRuleColumnsOpen(open)}
+    >
+      <DrawerHeader>
+        <DrawerHeaderTitle
+          action={
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<Dismiss24Regular />}
+              onClick={() => setIsBusinessRuleColumnsOpen(false)}
+            />
+          }
+        >
+          <Body1>Business Rules columns</Body1>
+        </DrawerHeaderTitle>
+      </DrawerHeader>
+
+      <DrawerBody>
+        <List
+          selectionMode="multiselect"
+          selectedItems={selectedBusinessRuleAttributes}
+          onSelectionChange={(_, data) => setSelectedBusinessRuleAttributes(data.selectedItems)}
+          aria-label="List of attributes to display for business rules"
+        >
+          {businessRuleAttributes()}
+        </List>
+      </DrawerBody>
+
+      <DrawerFooter style={{ display: "flex", width: "100%" }}>
+        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveBusinessRuleAttrSelection}>
+          Save
+        </Button>
+        <Button onClick={saveBusinessRuleAttributesDefaults}>Set Default</Button>
+      </DrawerFooter>
+    </OverlayDrawer>
+  );
+
   return (
     <>
       {columnDrawer}
       {relationshipDrawer}
+      {viewDrawer}
+      {businessProcessFlowDrawer}
+      {businessRuleDrawer}
       {selectedTable === table && (
         <div style={{ position: "sticky", top: "40px", zIndex: 15 }}>
           <TabList selectedValue={selectedValue} onTabSelect={onTabSelect} size="small">
@@ -520,6 +845,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             </Tab>
             <Tab id="Solutions" value="Solutions">
               Solutions
+            </Tab>
+            <Tab id="Views" value="Views">
+              Views
+            </Tab>
+            <Tab id="BusinessProcessFlows" value="BusinessProcessFlows">
+              Business Process Flows
+            </Tab>
+            <Tab id="BusinessRules" value="BusinessRules">
+              Business Rules
             </Tab>
             <div style={{ display: "flex", width: "100%", alignItems: "center" }}>
               {selectedValue === "columns" && (
@@ -576,6 +910,48 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                     onClick={exportSolutionsClick}
                     disabled={selTable.solutions.length === 0}
                   />
+                </div>
+              )}
+              {selectedValue === "Views" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  {selTable.views.length > 0 && (
+                    <SearchBox
+                      size="small"
+                      placeholder="Search Views"
+                      aria-label="Search name and type"
+                      onChange={viewsSearch}
+                      style={{ marginRight: "10px" }}
+                    />
+                  )}
+                  <Button icon={<ColumnEditRegular />} onClick={editViewColumnsClick} />
+                </div>
+              )}
+              {selectedValue === "BusinessProcessFlows" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  {selTable.businessProcessFlows.length > 0 && (
+                    <SearchBox
+                      size="small"
+                      placeholder="Search Business Process Flows"
+                      aria-label="Search name and type"
+                      onChange={businessProcessFlowsSearch}
+                      style={{ marginRight: "10px" }}
+                    />
+                  )}
+                  <Button icon={<ColumnEditRegular />} onClick={editBusinessProcessFlowColumnsClick} />
+                </div>
+              )}
+              {selectedValue === "BusinessRules" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  {selTable.businessRules.length > 0 && (
+                    <SearchBox
+                      size="small"
+                      placeholder="Search Business Rules"
+                      aria-label="Search name and type"
+                      onChange={businessRulesSearch}
+                      style={{ marginRight: "10px" }}
+                    />
+                  )}
+                  <Button icon={<ColumnEditRegular />} onClick={editBusinessRuleColumnsClick} />
                 </div>
               )}
               {selectedValue === "details" && (
@@ -667,6 +1043,39 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
+                onLog={onLog}
+                showNotification={showNotification}
+              />
+            )}
+            {selectedValue === "Views" && (
+              <Views
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                viewAttributes={viewModel.viewAttributes}
+                onLog={onLog}
+                showNotification={showNotification}
+              />
+            )}
+            {selectedValue === "BusinessProcessFlows" && (
+              <BusinessProcessFlows
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                businessProcessFlowAttributes={viewModel.businessProcessFlowAttributes}
+                onLog={onLog}
+                showNotification={showNotification}
+              />
+            )}
+            {selectedValue === "BusinessRules" && (
+              <BusinessRules
+                connection={connection}
+                dvService={dvService}
+                isLoading={isLoading}
+                selectedTable={selTable}
+                businessRuleAttributes={viewModel.businessRuleAttributes}
                 onLog={onLog}
                 showNotification={showNotification}
               />

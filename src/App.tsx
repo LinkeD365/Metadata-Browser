@@ -90,6 +90,18 @@ function App() {
             );
           }
         }
+        const savedViewAttribs = await window.toolboxAPI.settings.get("defaultViewAttributes");
+        if (savedViewAttribs) {
+          viewModel.viewAttributes = JSON.parse(savedViewAttribs);
+        }
+        const savedBpfAttribs = await window.toolboxAPI.settings.get("defaultBusinessProcessFlowAttributes");
+        if (savedBpfAttribs) {
+          viewModel.businessProcessFlowAttributes = JSON.parse(savedBpfAttribs);
+        }
+        const savedBusinessRuleAttribs = await window.toolboxAPI.settings.get("defaultBusinessRuleAttributes");
+        if (savedBusinessRuleAttribs) {
+          viewModel.businessRuleAttributes = JSON.parse(savedBusinessRuleAttribs);
+        }
         const excelExport = await window.toolboxAPI.settings.get("defaultExcelExportOptions");
         if (excelExport) {
           Object.assign(viewModel.excelOptions, JSON.parse(excelExport));

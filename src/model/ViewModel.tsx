@@ -7,6 +7,9 @@ export class ViewModel {
   selectedTables: TableMeta[] = [];
   columnAttributes: ColumnDefinition[] = [];
   relationshipAttributes: RelationshipAttribute[] = [];
+  viewAttributes: string[] = [];
+  businessProcessFlowAttributes: string[] = [];
+  businessRuleAttributes: string[] = [];
   tableAttributes: string[] = [];
   solutions: Solution[] = [];
   selectedSolution?: Solution;

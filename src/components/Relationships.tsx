@@ -98,7 +98,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
   }, [selectedTable.relationships.length, type, viewModel.relationshipAttributes]);
 
   const colDefs = React.useMemo<ColDef<RelationshipMeta>[]>(
-    () => [{ headerName: "Relationship Name", field: "relationshipName", flex: 2 }, ...createRelAttribs],
+    () => [{ headerName: "Relationship Name", field: "relationshipName", flex: 2, sort: "asc" }, ...createRelAttribs],
     [createRelAttribs],
   );
 

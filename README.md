@@ -11,6 +11,8 @@
 - ✅ Select attributes you want to display
 - ✅ Export to CSV
 - ✅ Export to Excel
+- ✅ Added Views, BPFs and Business Rules
+- ✅ Search on Solutions and default sorting
 
 ## Latest
 20/1/25 - Added Export to Excel

@@ -87,7 +87,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
 
   const colDefs = React.useMemo<ColDef<ColumnMeta>[]>(
     () => [
-      { headerName: "Column Name", field: "displayName" },
+      { headerName: "Column Name", field: "displayName", sort: "asc" },
       { headerName: "Logical Name", field: "columnName" },
       { headerName: "Data Type", field: "dataType" },
       ...viewModel.columnAttributes

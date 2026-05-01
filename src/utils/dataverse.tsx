@@ -1,6 +1,9 @@
 import { ColumnMeta } from "../model/columnMeta";
+import { BusinessProcessFlowMeta } from "../model/businessProcessFlow";
+import { BusinessRuleMeta } from "../model/businessRule";
 import { Solution } from "../model/solution";
 import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
+import { ViewMeta } from "../model/view";
 
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -16,6 +19,26 @@ export class dvService {
     this.connection = props.connection;
     this.dvApi = props.dvApi;
     this.onLog = props.onLog;
+  }
+
+  private toAttributes(record: Record<string, unknown>): { attributeName: string; attributeValue: string }[] {
+    const result: { attributeName: string; attributeValue: string }[] = [];
+    Object.keys(record).forEach((prop) => {
+      const value = record[prop];
+      if (typeof value === "function") return;
+      try {
+        result.push({
+          attributeName: prop,
+          attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+        });
+      } catch {
+        result.push({
+          attributeName: prop,
+          attributeValue: String(value),
+        });
+      }
+    });
+    return result;
   }
 
   /// Get metadata for all tables
@@ -36,21 +59,8 @@ export class dvService {
       tableMeta.displayName = table.DisplayName?.LocalizedLabels?.[0]?.Label || table.LogicalName;
       tableMeta.metaId = table.MetadataId || "";
       tableMeta.attributes = [];
-      Object.keys(table).forEach((prop) => {
-        const value = table[prop];
-        if (typeof value === "function") return;
-        try {
-          tableMeta.attributes.push({
-            attributeName: prop,
-            attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-          });
-        } catch {
-          tableMeta.attributes.push({
-            attributeName: prop,
-            attributeValue: String(value),
-          });
-        }
-      });
+      tableMeta.typeCode = table.ObjectTypeCode;
+      tableMeta.attributes = this.toAttributes(table as Record<string, unknown>);
       return tableMeta;
     });
     return tableMetaList;
@@ -78,21 +88,7 @@ export class dvService {
         columnMeta.displayName = attr.DisplayName?.LocalizedLabels?.[0]?.Label || attr.LogicalName;
         columnMeta.dataType = attr.AttributeType || "";
         columnMeta.attributes = [];
-        Object.keys(attr).forEach((prop) => {
-          const value = attr[prop];
-          if (typeof value === "function") return;
-          try {
-            columnMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-            });
-          } catch {
-            columnMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: String(value),
-            });
-          }
-        });
+        columnMeta.attributes = this.toAttributes(attr as Record<string, unknown>);
         //console.log("ColumnMeta created: ", columnMeta);
         return columnMeta;
       });
@@ -154,22 +150,8 @@ export class dvService {
           tm.displayName = src?.DisplayName?.LocalizedLabels?.[0]?.Label || tm.tableName;
           tm.metaId = src?.MetadataId || "";
           tm.attributes = [];
-
-          Object.keys(src || {}).forEach((prop) => {
-            const value = src[prop];
-            if (typeof value === "function") return;
-            try {
-              tm.attributes.push({
-                attributeName: prop,
-                attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-              });
-            } catch {
-              tm.attributes.push({
-                attributeName: prop,
-                attributeValue: String(value),
-              });
-            }
-          });
+          tm.typeCode = src?.ObjectTypeCode;
+          tm.attributes = this.toAttributes((src || {}) as Record<string, unknown>);
 
           return tm;
         } catch (err) {
@@ -201,21 +183,7 @@ export class dvService {
         const keyMeta = new KeyMeta();
         keyMeta.keyName = key.DisplayName?.UserLocalizedLabel?.Label || key.LogicalName || "";
         keyMeta.attributes = [];
-        Object.keys(key).forEach((prop) => {
-          const value = key[prop];
-          if (typeof value === "function") return;
-          try {
-            keyMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-            });
-          } catch {
-            keyMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: String(value),
-            });
-          }
-        });
+        keyMeta.attributes = this.toAttributes(key as Record<string, unknown>);
         return keyMeta;
       });
       return keyMetaList;
@@ -240,21 +208,7 @@ export class dvService {
         const privMeta = new PrivilegeMeta();
         privMeta.privilegeName = privilege.Name;
         privMeta.attributes = [];
-        Object.keys(privilege).forEach((prop) => {
-          const value = privilege[prop];
-          if (typeof value === "function") return;
-          try {
-            privMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-            });
-          } catch {
-            privMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: String(value),
-            });
-          }
-        });
+        privMeta.attributes = this.toAttributes(privilege as Record<string, unknown>);
         return privMeta;
       });
       return keyMetaList;
@@ -279,21 +233,7 @@ export class dvService {
         relationshipMeta.relationshipName = relationship.SchemaName;
         relationshipMeta.type = type;
         relationshipMeta.attributes = [];
-        Object.keys(relationship).forEach((prop) => {
-          const value = relationship[prop];
-          if (typeof value === "function") return;
-          try {
-            relationshipMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-            });
-          } catch {
-            relationshipMeta.attributes.push({
-              attributeName: prop,
-              attributeValue: String(value),
-            });
-          }
-        });
+        relationshipMeta.attributes = this.toAttributes(relationship as Record<string, unknown>);
         return relationshipMeta;
       });
       return relationships;
@@ -367,6 +307,114 @@ export class dvService {
     } catch (err) {
       this.onLog(
         `Error fetching solutions metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error",
+      );
+      throw err;
+    }
+  }
+
+  async getViewsForTable(selectedTable: TableMeta): Promise<ViewMeta[]> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    try {
+      this.onLog(`Fetching views metadata for table: ${selectedTable.tableName}`, "info");
+
+      const systemViewsQuery = "savedqueries?$filter=returnedtypecode eq '" + selectedTable.tableName + "'";
+
+      const personalViewsQuery = "userqueries?$filter=returnedtypecode eq '" + selectedTable.tableName + "'";
+
+      const [systemViewsData, personalViewsData] = await Promise.all([
+        this.dvApi.queryData(systemViewsQuery),
+        this.dvApi.queryData(personalViewsQuery),
+      ]);
+
+      const systemViews = (systemViewsData.value as any[]).map((view: any) => {
+        const viewMeta = new ViewMeta();
+        viewMeta.viewName = view.name;
+        viewMeta.type = "System";
+        viewMeta.attributes = this.toAttributes(view as Record<string, unknown>);
+
+        return viewMeta;
+      });
+
+      const personalViews = (personalViewsData.value as any[]).map((view: any) => {
+        const viewMeta = new ViewMeta();
+        viewMeta.viewName = view.name;
+        viewMeta.type = "Personal";
+        viewMeta.attributes = this.toAttributes(view as Record<string, unknown>);
+
+        return viewMeta;
+      });
+
+      return [...systemViews, ...personalViews];
+    } catch (err) {
+      this.onLog(
+        `Error fetching views metadata for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error",
+      );
+      throw err;
+    }
+  }
+
+  async getBusinessProcessFlowsForTable(selectedTable: TableMeta): Promise<BusinessProcessFlowMeta[]> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    try {
+      this.onLog(`Fetching business process flows for table: ${selectedTable.tableName}`, "info");
+
+      const bpfQuery = "workflows?$filter=category eq 4 and primaryentity eq '" + selectedTable.tableName + "'";
+
+      const bpfData = await this.dvApi.queryData(bpfQuery);
+
+      const flows = (bpfData.value as any[]).map((flow: any) => {
+        const bpfMeta = new BusinessProcessFlowMeta();
+        bpfMeta.flowName = flow.name || flow.uniquename || "";
+        bpfMeta.type = "Business Process Flow";
+        bpfMeta.attributes = this.toAttributes(flow as Record<string, unknown>);
+
+        return bpfMeta;
+      });
+
+      return flows;
+    } catch (err) {
+      this.onLog(
+        `Error fetching business process flows for table ${selectedTable.tableName}: ${(err as Error).message}`,
+        "error",
+      );
+      throw err;
+    }
+  }
+
+  async getBusinessRulesForTable(selectedTable: TableMeta): Promise<BusinessRuleMeta[]> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    try {
+      this.onLog(`Fetching business rules for table: ${selectedTable.tableName}`, "info");
+
+      const businessRulesQuery =
+        "workflows?$filter=category eq 2 and primaryentity eq '" + selectedTable.tableName + "'";
+
+      const businessRulesData = await this.dvApi.queryData(businessRulesQuery);
+
+      const rules = (businessRulesData.value as any[]).map((rule: any) => {
+        const ruleMeta = new BusinessRuleMeta();
+        ruleMeta.ruleName = rule.name || rule.uniquename || "";
+        ruleMeta.type = "Business Rule";
+        ruleMeta.attributes = this.toAttributes(rule as Record<string, unknown>);
+
+        return ruleMeta;
+      });
+
+      return rules;
+    } catch (err) {
+      this.onLog(
+        `Error fetching business rules for table ${selectedTable.tableName}: ${(err as Error).message}`,
         "error",
       );
       throw err;

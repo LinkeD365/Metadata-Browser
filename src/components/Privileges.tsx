@@ -80,7 +80,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   }, [selectedTable.privileges.length]);
 
   const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
-    () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2 }, ...createPrivilegeAttr],
+    () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2, sort: "asc" }, ...createPrivilegeAttr],
 
     [createPrivilegeAttr],
   );
