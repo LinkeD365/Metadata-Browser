@@ -58,7 +58,9 @@ export function TableColumnDrawer(props: TableColumnDrawerProps): React.JSX.Elem
               onClick={() => onOpenChange(false)}
             />
           }
-        ></DrawerHeaderTitle>
+        >
+          Select Columns
+        </DrawerHeaderTitle>
       </DrawerHeader>
 
       <DrawerBody>
