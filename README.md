@@ -15,7 +15,8 @@
 - ✅ Search on Solutions and default sorting
 
 ## Latest
-20/1/25 - Added Export to Excel
+20/5/26 - Added open in links, Views, BPFs, Business Rules
+20/1/26 - Added Export to Excel
 
 ## Installation
 
