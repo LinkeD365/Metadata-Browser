@@ -5,6 +5,12 @@ import { Solution } from "../model/solution";
 import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
 import { ViewMeta } from "../model/view";
 
+interface RetrieveCurrentOrganizationResponse {
+  Detail?: {
+    EnvironmentId?: string;
+  };
+}
+
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
@@ -14,6 +20,8 @@ export class dvService {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
+  private cachedEnvironmentId: string | null = null;
+  private environmentIdRequest: Promise<string> | null = null;
 
   constructor(props: dvServiceProps) {
     this.connection = props.connection;
@@ -21,24 +29,50 @@ export class dvService {
     this.onLog = props.onLog;
   }
 
-  private toAttributes(record: Record<string, unknown>): { attributeName: string; attributeValue: string }[] {
-    const result: { attributeName: string; attributeValue: string }[] = [];
-    Object.keys(record).forEach((prop) => {
-      const value = record[prop];
-      if (typeof value === "function") return;
-      try {
-        result.push({
-          attributeName: prop,
-          attributeValue: typeof value === "string" ? value : JSON.stringify(value),
-        });
-      } catch {
-        result.push({
-          attributeName: prop,
-          attributeValue: String(value),
-        });
-      }
-    });
-    return result;
+  async getEnvironmentId(): Promise<string> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    if (this.cachedEnvironmentId) {
+      return this.cachedEnvironmentId;
+    }
+
+    if (this.environmentIdRequest) {
+      return this.environmentIdRequest;
+    }
+
+    const requestPath =
+      "RetrieveCurrentOrganization(AccessType=@p1)?@p1=Microsoft.Dynamics.CRM.EndpointAccessType'Default'";
+
+    this.environmentIdRequest = this.dvApi
+      .queryData(requestPath)
+      .then((response) => {
+        const environmentId = (response as RetrieveCurrentOrganizationResponse)?.Detail?.EnvironmentId?.trim();
+
+        if (!environmentId) {
+          throw new Error("RetrieveCurrentOrganization did not return an environment ID");
+        }
+
+        this.cachedEnvironmentId = environmentId;
+        return environmentId;
+      })
+      .finally(() => {
+        this.environmentIdRequest = null;
+      });
+
+    return this.environmentIdRequest;
+  }
+
+  async getTableBrowserUrl(tableMetaId: string, pathSuffix = ""): Promise<string> {
+    if (!tableMetaId) {
+      throw new Error("No table metadata ID available");
+    }
+
+    const environmentId = await this.getEnvironmentId();
+    const normalizedSuffix = pathSuffix ? (pathSuffix.startsWith("/") ? pathSuffix : `/${pathSuffix}`) : "";
+
+    return `https://make.powerapps.com/environments/${encodeURIComponent(environmentId)}/entities/${encodeURIComponent(tableMetaId)}${normalizedSuffix}`;
   }
 
   /// Get metadata for all tables
@@ -60,7 +94,21 @@ export class dvService {
       tableMeta.metaId = table.MetadataId || "";
       tableMeta.attributes = [];
       tableMeta.typeCode = table.ObjectTypeCode;
-      tableMeta.attributes = this.toAttributes(table as Record<string, unknown>);
+      Object.keys(table).forEach((prop) => {
+        const value = table[prop];
+        if (typeof value === "function") return;
+        try {
+          tableMeta.attributes.push({
+            attributeName: prop,
+            attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+          });
+        } catch {
+          tableMeta.attributes.push({
+            attributeName: prop,
+            attributeValue: String(value),
+          });
+        }
+      });
       return tableMeta;
     });
     return tableMetaList;
@@ -88,7 +136,21 @@ export class dvService {
         columnMeta.displayName = attr.DisplayName?.LocalizedLabels?.[0]?.Label || attr.LogicalName;
         columnMeta.dataType = attr.AttributeType || "";
         columnMeta.attributes = [];
-        columnMeta.attributes = this.toAttributes(attr as Record<string, unknown>);
+        Object.keys(attr).forEach((prop) => {
+          const value = attr[prop];
+          if (typeof value === "function") return;
+          try {
+            columnMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            columnMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
         //console.log("ColumnMeta created: ", columnMeta);
         return columnMeta;
       });
@@ -151,7 +213,22 @@ export class dvService {
           tm.metaId = src?.MetadataId || "";
           tm.attributes = [];
           tm.typeCode = src?.ObjectTypeCode;
-          tm.attributes = this.toAttributes((src || {}) as Record<string, unknown>);
+          console.log("Processing table metadata for: ", entityMeta);
+          Object.keys(src || {}).forEach((prop) => {
+            const value = src[prop];
+            if (typeof value === "function") return;
+            try {
+              tm.attributes.push({
+                attributeName: prop,
+                attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+              });
+            } catch {
+              tm.attributes.push({
+                attributeName: prop,
+                attributeValue: String(value),
+              });
+            }
+          });
 
           return tm;
         } catch (err) {
@@ -183,7 +260,21 @@ export class dvService {
         const keyMeta = new KeyMeta();
         keyMeta.keyName = key.DisplayName?.UserLocalizedLabel?.Label || key.LogicalName || "";
         keyMeta.attributes = [];
-        keyMeta.attributes = this.toAttributes(key as Record<string, unknown>);
+        Object.keys(key).forEach((prop) => {
+          const value = key[prop];
+          if (typeof value === "function") return;
+          try {
+            keyMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            keyMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
         return keyMeta;
       });
       return keyMetaList;
@@ -208,7 +299,21 @@ export class dvService {
         const privMeta = new PrivilegeMeta();
         privMeta.privilegeName = privilege.Name;
         privMeta.attributes = [];
-        privMeta.attributes = this.toAttributes(privilege as Record<string, unknown>);
+        Object.keys(privilege).forEach((prop) => {
+          const value = privilege[prop];
+          if (typeof value === "function") return;
+          try {
+            privMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            privMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
         return privMeta;
       });
       return keyMetaList;
@@ -233,7 +338,21 @@ export class dvService {
         relationshipMeta.relationshipName = relationship.SchemaName;
         relationshipMeta.type = type;
         relationshipMeta.attributes = [];
-        relationshipMeta.attributes = this.toAttributes(relationship as Record<string, unknown>);
+        Object.keys(relationship).forEach((prop) => {
+          const value = relationship[prop];
+          if (typeof value === "function") return;
+          try {
+            relationshipMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            relationshipMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
         return relationshipMeta;
       });
       return relationships;
@@ -334,7 +453,22 @@ export class dvService {
         const viewMeta = new ViewMeta();
         viewMeta.viewName = view.name;
         viewMeta.type = "System";
-        viewMeta.attributes = this.toAttributes(view as Record<string, unknown>);
+
+        Object.keys(view).forEach((prop) => {
+          const value = view[prop];
+          if (typeof value === "function") return;
+          try {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
 
         return viewMeta;
       });
@@ -343,7 +477,22 @@ export class dvService {
         const viewMeta = new ViewMeta();
         viewMeta.viewName = view.name;
         viewMeta.type = "Personal";
-        viewMeta.attributes = this.toAttributes(view as Record<string, unknown>);
+
+        Object.keys(view).forEach((prop) => {
+          const value = view[prop];
+          if (typeof value === "function") return;
+          try {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            viewMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
 
         return viewMeta;
       });
@@ -374,7 +523,22 @@ export class dvService {
         const bpfMeta = new BusinessProcessFlowMeta();
         bpfMeta.flowName = flow.name || flow.uniquename || "";
         bpfMeta.type = "Business Process Flow";
-        bpfMeta.attributes = this.toAttributes(flow as Record<string, unknown>);
+
+        Object.keys(flow).forEach((prop) => {
+          const value = flow[prop];
+          if (typeof value === "function") return;
+          try {
+            bpfMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            bpfMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
 
         return bpfMeta;
       });
@@ -406,7 +570,22 @@ export class dvService {
         const ruleMeta = new BusinessRuleMeta();
         ruleMeta.ruleName = rule.name || rule.uniquename || "";
         ruleMeta.type = "Business Rule";
-        ruleMeta.attributes = this.toAttributes(rule as Record<string, unknown>);
+
+        Object.keys(rule).forEach((prop) => {
+          const value = rule[prop];
+          if (typeof value === "function") return;
+          try {
+            ruleMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+            });
+          } catch {
+            ruleMeta.attributes.push({
+              attributeName: prop,
+              attributeValue: String(value),
+            });
+          }
+        });
 
         return ruleMeta;
       });

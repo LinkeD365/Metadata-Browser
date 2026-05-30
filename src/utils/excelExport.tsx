@@ -1,7 +1,6 @@
 import { TableMeta } from "../model/tableMeta";
 import { ViewModel } from "../model/ViewModel";
 import { dvService } from "./dataverse";
-import ExcelJS from "exceljs";
 
 interface ExcelExportProps {
   dvsvc: dvService;
@@ -21,6 +20,9 @@ export class ExcelExport {
   }
 
   async export(tables: TableMeta[]): Promise<void> {
+    const excelModule = await import("exceljs");
+    const ExcelJS = (excelModule as any).default ?? excelModule;
+
     for (const table of tables) {
       console.log(`Exporting table: ${table.displayName}`);
 
@@ -44,7 +46,7 @@ export class ExcelExport {
       this.downloadBlob(blob, fileName);
     }
   }
-  async addKeysSheet(workbook: ExcelJS.Workbook, table: TableMeta) {
+  async addKeysSheet(workbook: any, table: TableMeta) {
     const sheet = workbook.addWorksheet("Keys");
     console.log("Adding keys for table:", table.keys.length);
     if (!table.keys || table.keys.length === 0) {
@@ -65,7 +67,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private addTableDetailsSheet(workbook: ExcelJS.Workbook, table: TableMeta): void {
+  private addTableDetailsSheet(workbook: any, table: TableMeta): void {
     const sheet = workbook.addWorksheet("Table Details");
     sheet.addRow(["Table Name", table.tableName]);
     sheet.addRow(["Display Name", table.displayName]);
@@ -76,7 +78,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addColumnsSheet(workbook: ExcelJS.Workbook, table: TableMeta): Promise<void> {
+  private async addColumnsSheet(workbook: any, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Columns");
     console.log("Adding columns for table:", table.columns.length);
     if (!table.columns || table.columns.length === 0) {
@@ -102,7 +104,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addPrivilegesSheet(workbook: ExcelJS.Workbook, table: TableMeta): Promise<void> {
+  private async addPrivilegesSheet(workbook: any, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Privileges");
     console.log("Adding privileges for table:", table.privileges.length);
     if (!table.privileges || table.privileges.length === 0) {
@@ -123,7 +125,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addSolutionsSheet(workbook: ExcelJS.Workbook, table: TableMeta): Promise<void> {
+  private async addSolutionsSheet(workbook: any, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Solutions");
     console.log("Adding solutions for table:", table.solutions.length);
     if (!table.solutions || table.solutions.length === 0) {
@@ -160,7 +162,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addRelationshipsSheet(workbook: ExcelJS.Workbook, table: TableMeta): Promise<void> {
+  private async addRelationshipsSheet(workbook: any, table: TableMeta): Promise<void> {
     const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
     for (const type of relTypes) {
       const sheet = workbook.addWorksheet(type);
@@ -211,11 +213,11 @@ export class ExcelExport {
 
     URL.revokeObjectURL(url);
   }
-  private styleSheet(sheet: ExcelJS.Worksheet): void {
+  private styleSheet(sheet: any): void {
     this.styleHeaderRow(sheet.getRow(1));
     this.applyAlternatingRowFill(sheet, 1);
   }
-  private styleHeaderRow(row: ExcelJS.Row): void {
+  private styleHeaderRow(row: any): void {
     row.font = { bold: true, color: { argb: "FFFFFFFF" } };
     row.fill = {
       type: "pattern",
@@ -226,8 +228,8 @@ export class ExcelExport {
     row.height = 20;
   }
 
-  private applyAlternatingRowFill(worksheet: ExcelJS.Worksheet, headerRowIndex = 1): void {
-    worksheet.eachRow((row, rowNumber) => {
+  private applyAlternatingRowFill(worksheet: any, headerRowIndex = 1): void {
+    worksheet.eachRow((row: any, rowNumber: number) => {
       if (rowNumber > headerRowIndex && rowNumber % 2 === 0) {
         row.fill = {
           type: "pattern",

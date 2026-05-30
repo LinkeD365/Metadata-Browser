@@ -27,13 +27,12 @@ export class TableMeta {
   businessProcessFlowSearch?: string;
   businessRules: BusinessRuleMeta[] = [];
   businessRuleSearch?: string;
-  typeCode: number | undefined;
+  typeCode: any;
 
   constructor() {
     this.tableName = "";
     this.displayName = "";
     this.metaId = "";
-    this.typeCode = undefined;
 
     makeAutoObservable(this);
   }

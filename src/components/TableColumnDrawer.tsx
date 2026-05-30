@@ -9,6 +9,7 @@ import {
   ListItem,
   OverlayDrawer,
   SelectionItemId,
+  Tooltip,
 } from "@fluentui/react-components";
 import { Dismiss24Regular } from "@fluentui/react-icons";
 import { TableMeta } from "../model/tableMeta";
@@ -26,6 +27,9 @@ interface TableColumnDrawerProps {
 export function TableColumnDrawer(props: TableColumnDrawerProps): React.JSX.Element {
   const { open, onOpenChange, tableMetadata, selectedTableCols, onSelectedTableColsChange, onApply, onSetDefault } =
     props;
+  const closeButtonLabel = "Close column selection";
+  const applyButtonLabel = "Apply selected table columns";
+  const setDefaultButtonLabel = "Save selected table columns as default";
 
   const tableAttributeList = React.useMemo(() => {
     if (!tableMetadata || tableMetadata.length === 0 || tableMetadata[0].attributes.length === 0) {
@@ -51,16 +55,16 @@ export function TableColumnDrawer(props: TableColumnDrawerProps): React.JSX.Elem
       <DrawerHeader>
         <DrawerHeaderTitle
           action={
-            <Button
-              appearance="subtle"
-              aria-label="Close"
-              icon={<Dismiss24Regular />}
-              onClick={() => onOpenChange(false)}
-            />
+            <Tooltip content={closeButtonLabel} relationship="label">
+              <Button
+                appearance="subtle"
+                aria-label={closeButtonLabel}
+                icon={<Dismiss24Regular />}
+                onClick={() => onOpenChange(false)}
+              />
+            </Tooltip>
           }
-        >
-          Select Columns
-        </DrawerHeaderTitle>
+        ></DrawerHeaderTitle>
       </DrawerHeader>
 
       <DrawerBody>
@@ -75,10 +79,16 @@ export function TableColumnDrawer(props: TableColumnDrawerProps): React.JSX.Elem
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={onApply}>
-          Apply
-        </Button>
-        <Button onClick={onSetDefault}>Set Default</Button>
+        <Tooltip content={applyButtonLabel} relationship="label">
+          <Button style={{ marginLeft: "auto" }} appearance="primary" aria-label={applyButtonLabel} onClick={onApply}>
+            Apply
+          </Button>
+        </Tooltip>
+        <Tooltip content={setDefaultButtonLabel} relationship="label">
+          <Button aria-label={setDefaultButtonLabel} onClick={onSetDefault}>
+            Set Default
+          </Button>
+        </Tooltip>
       </DrawerFooter>
     </OverlayDrawer>
   );

@@ -34,13 +34,14 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
-import { ColumnEditRegular, TextboxMoreRegular } from "@fluentui/react-icons";
+import { ColumnEditRegular, OpenRegular, TextboxMoreRegular } from "@fluentui/react-icons";
 import { ExportPopover } from "./ExportPopover";
 import { TableColumnDrawer } from "./TableColumnDrawer";
 import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
+  tabLabel: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalXXS },
 });
 
 interface MetadataBrowserProps {
@@ -53,6 +54,11 @@ interface MetadataBrowserProps {
 
 export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX.Element => {
   const { connection, dvService, onLog, vm } = props;
+  const selectSolutionLabel = "Select a solution to load tables";
+  const openTableSourceOptionsLabel = "Open table source options";
+  const openExportDialogLabel = "Open export dialog";
+  const openExportOptionsLabel = "Open export options";
+  const chooseVisibleColumnsLabel = "Choose visible table columns";
   const [loadingMeta, setLoadingMeta] = React.useState(false);
   const [isTableColumnEditOpen, setIsTableColumnEditOpen] = React.useState(false);
   const [isSolutionSelOpen, setIsSolutionSelOpen] = React.useState(false);
@@ -86,6 +92,61 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       }
     },
     [],
+  );
+
+  const openTableInConnectionBrowser = useCallback(
+    async (table: TableMeta) => {
+      if (!connection) {
+        onLog("Cannot open table: no active connection available.", "warning");
+        await showNotification("No active connection", "Please connect before opening a table.", "warning");
+        return;
+      }
+
+      if (!table.metaId) {
+        onLog(`Cannot open table ${table.tableName}: missing table metadata ID.`, "warning");
+        return;
+      }
+      const toolboxUtils = window.toolboxAPI.utils as ToolBoxAPI.UtilsAPI & {
+        openInConnectionBrowser: (url: string, connectionTarget?: "primary" | "secondary") => Promise<void>;
+      };
+
+      try {
+        const tableUrl = await dvService.getTableBrowserUrl(table.metaId);
+        await toolboxUtils.openInConnectionBrowser(tableUrl);
+      } catch (error) {
+        const message = (error as Error).message || "Unknown error";
+        onLog(`Failed to open table ${table.tableName}: ${message}`, "error");
+      }
+    },
+    [connection, onLog, showNotification],
+  );
+
+  const renderOpenTableButton = useCallback(
+    (
+      table: TableMeta,
+      options?: {
+        appearance?: "secondary" | "subtle" | "transparent";
+        size?: "small" | "medium" | "large";
+        iconFontSize?: number;
+        stopPropagation?: boolean;
+      },
+    ) => (
+      <Tooltip content={`Open ${table.displayName} definition in browser`} relationship="label">
+        <Button
+          aria-label={`Open ${table.displayName} definition in browser`}
+          icon={<OpenRegular fontSize={options?.iconFontSize} />}
+          size={options?.size ?? "small"}
+          appearance={options?.appearance ?? "secondary"}
+          onClick={(e: React.MouseEvent) => {
+            if (options?.stopPropagation) {
+              e.stopPropagation();
+            }
+            void openTableInConnectionBrowser(table);
+          }}
+        />
+      </Tooltip>
+    ),
+    [openTableInConnectionBrowser],
   );
 
   React.useEffect(() => {
@@ -188,15 +249,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
     console.log("CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile("tables_metadata.csv", csvString);
-    // const csvString = [
-    //   ["Header1", "Header2", "Header3"], // Specify your headers here
-    //   ...data.map((item) => [item.field1, item.field2, item.field3]), // Map your data fields accordingly
-    // ]
-    //   .map((row) => row.join(","))
-    //   .join("\n");
-
-    // // Create a Blob from the CSV string
-    // const blob = new Blob([csvString], { type: "text/csv" });
   }
 
   function saveTableColumnSelection(): void {
@@ -252,7 +304,15 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     vm.selectedTables && vm.selectedTables.length > 0 ? (
       (vm.selectedTables ?? []).map((t) => (
         <Tab key={t.tableName} id={`Table-${t.tableName}`} value={t.tableName as TabValue}>
-          {t.displayName}
+          <span className={styles.tabLabel}>
+            <span>{t.displayName}</span>
+            {renderOpenTableButton(t, {
+              appearance: "subtle",
+              size: "small",
+              iconFontSize: 12,
+              stopPropagation: true,
+            })}
+          </span>
         </Tab>
       ))
     ) : (
@@ -295,17 +355,35 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         maxWidth: 60,
         minWidth: 60,
         cellRenderer: (params: CustomCellRendererProps<TableMeta>) => {
+          const label = `Open details tab for ${params.data?.displayName ?? "table"}`;
           return (
-            <Button
-              icon={<TextboxMoreRegular />}
-              size="small"
-              appearance="secondary"
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                handleRowDoubleClick(params.data!);
-              }}
-            />
+            <Tooltip content={label} relationship="label">
+              <Button
+                aria-label={label}
+                icon={<TextboxMoreRegular />}
+                size="small"
+                appearance="secondary"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  handleRowDoubleClick(params.data!);
+                }}
+              />
+            </Tooltip>
           );
+        },
+      },
+      {
+        headerName: "",
+        sortable: false,
+        filter: false,
+        width: 60,
+        resizable: false,
+        maxWidth: 60,
+        minWidth: 60,
+        cellRenderer: (params: CustomCellRendererProps<TableMeta>) => {
+          const table = params.data;
+          if (!table) return null;
+          return renderOpenTableButton(table, { stopPropagation: true });
         },
       },
       {
@@ -331,7 +409,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             }) as ColDef<TableMeta>,
         ),
     ],
-    [vm.tableAttributes],
+    [renderOpenTableButton, vm.tableAttributes],
   );
 
   const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
@@ -372,9 +450,17 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     <Menu positioning="below-end">
       <MenuTrigger disableButtonEnhancement>
         {(triggerProps: MenuButtonProps) => (
-          <SplitButton menuButton={triggerProps} primaryActionButton={{ onClick: () => setIsSolutionSelOpen(true) }}>
-            Select a Solution
-          </SplitButton>
+          <Tooltip content={selectSolutionLabel} relationship="label">
+            <SplitButton
+              menuButton={{ ...triggerProps, "aria-label": openTableSourceOptionsLabel }}
+              primaryActionButton={{
+                onClick: () => setIsSolutionSelOpen(true),
+                "aria-label": selectSolutionLabel,
+              }}
+            >
+              Select a Solution
+            </SplitButton>
+          </Tooltip>
         )}
       </MenuTrigger>
 
@@ -390,9 +476,17 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     <Menu positioning="below-end">
       <MenuTrigger disableButtonEnhancement>
         {(triggerProps: MenuButtonProps) => (
-          <SplitButton menuButton={triggerProps} primaryActionButton={{ onClick: () => setIsExportPopoverOpen(true) }}>
-            Export All
-          </SplitButton>
+          <Tooltip content={openExportDialogLabel} relationship="label">
+            <SplitButton
+              menuButton={{ ...triggerProps, "aria-label": openExportOptionsLabel }}
+              primaryActionButton={{
+                onClick: () => setIsExportPopoverOpen(true),
+                "aria-label": openExportDialogLabel,
+              }}
+            >
+              Export All
+            </SplitButton>
+          </Tooltip>
         )}
       </MenuTrigger>
 
@@ -457,11 +551,16 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
                   </Label>
                 )}
                 <div style={{ display: "inline-block", padding: "0 2px" }}>{allTablesMenu}</div>
-                <Button
-                  icon={<ColumnEditRegular />}
-                  onClick={editColumnsClick}
-                  disabled={vm.tableMetadata.length === 0}
-                />
+                <Tooltip content={chooseVisibleColumnsLabel} relationship="label">
+                  <span>
+                    <Button
+                      aria-label={chooseVisibleColumnsLabel}
+                      icon={<ColumnEditRegular />}
+                      onClick={editColumnsClick}
+                      disabled={vm.tableMetadata.length === 0}
+                    />
+                  </span>
+                </Tooltip>
                 {exportMenu}
               </div>
             )}
