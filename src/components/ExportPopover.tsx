@@ -13,6 +13,7 @@ import {
   InfoLabel,
   OverlayDrawer,
   Subtitle2,
+  Tooltip,
 } from "@fluentui/react-components";
 import { ArrowExportUpRegular, Dismiss24Regular, Save16Filled } from "@fluentui/react-icons";
 import { ExcelExport } from "../utils/excelExport";
@@ -29,6 +30,9 @@ interface ExportPopoverProps {
 export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Element => {
   const { connection, dvSvc, vm, isExportOpen, setIsExportOpen, onLog } = props;
   const [blockClose, setBlockClose] = React.useState(false);
+  const closeButtonLabel = "Close export settings";
+  const exportButtonLabel = "Export selected metadata to Excel";
+  const saveSettingsButtonLabel = "Save export settings as default";
 
   async function exportToExcel(): Promise<void> {
     console.log("Exporting to Excel...", vm.selectedTables);
@@ -76,13 +80,17 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
       <DrawerHeader>
         <DrawerHeaderTitle
           action={
-            <Button
-              appearance="subtle"
-              aria-label="Close"
-              icon={<Dismiss24Regular />}
-              onClick={() => setIsExportOpen(false)}
-              disabled={blockClose}
-            />
+            <Tooltip content={closeButtonLabel} relationship="label">
+              <span>
+                <Button
+                  appearance="subtle"
+                  aria-label={closeButtonLabel}
+                  icon={<Dismiss24Regular />}
+                  onClick={() => setIsExportOpen(false)}
+                  disabled={blockClose}
+                />
+              </span>
+            </Tooltip>
           }
         >
           Export to Excel
@@ -148,24 +156,34 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button
-          style={{ marginLeft: "auto" }}
-          icon={<ArrowExportUpRegular />}
-          appearance="primary"
-          onClick={exportToExcel}
-          disabled={blockClose}
-        >
-          Export
-        </Button>
-        <Button
-          style={{ marginLeft: "8px" }}
-          icon={<Save16Filled />}
-          appearance="subtle"
-          onClick={saveExportSettings}
-          disabled={blockClose}
-        >
-          Save Settings
-        </Button>
+        <Tooltip content={exportButtonLabel} relationship="label">
+          <span>
+            <Button
+              style={{ marginLeft: "auto" }}
+              icon={<ArrowExportUpRegular />}
+              appearance="primary"
+              aria-label={exportButtonLabel}
+              onClick={exportToExcel}
+              disabled={blockClose}
+            >
+              Export
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip content={saveSettingsButtonLabel} relationship="label">
+          <span>
+            <Button
+              style={{ marginLeft: "8px" }}
+              icon={<Save16Filled />}
+              appearance="subtle"
+              aria-label={saveSettingsButtonLabel}
+              onClick={saveExportSettings}
+              disabled={blockClose}
+            >
+              Save Settings
+            </Button>
+          </span>
+        </Tooltip>
       </DrawerFooter>
     </OverlayDrawer>
   );

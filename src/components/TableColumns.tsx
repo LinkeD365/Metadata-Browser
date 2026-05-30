@@ -3,10 +3,28 @@ import { observer } from "mobx-react";
 import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
-import { Spinner, TableRowId } from "@fluentui/react-components";
+import { Spinner, TableRowId, Tooltip, tokens } from "@fluentui/react-components";
 import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-community";
-import { AgGridReact } from "ag-grid-react";
+import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import {
+  AppsRegular,
+  CalendarLtrRegular,
+  CheckboxCheckedRegular,
+  ClockRegular,
+  CodeRegular,
+  DataBarVerticalRegular,
+  DataPieRegular,
+  DecimalArrowLeftRegular,
+  GlobeRegular,
+  ImageRegular,
+  LinkRegular,
+  MoneyRegular,
+  PeopleRegular,
+  TableRegular,
+  TextBulletListRegular,
+  TextFieldRegular,
+} from "@fluentui/react-icons";
 
 import { ColumnMeta } from "../model/columnMeta";
 
@@ -22,6 +40,72 @@ interface TableColumnsProps {
 
 export const TableColumns = observer((props: TableColumnsProps): React.JSX.Element => {
   const { connection, dvService, onLog, viewModel, table, showNotification } = props;
+
+  const getDataTypeIcon = React.useCallback((dataType: string): React.JSX.Element => {
+    const normalizedType = dataType.trim().toLowerCase();
+
+    if (["string", "memo", "entityname"].includes(normalizedType)) {
+      return <TextFieldRegular />;
+    }
+
+    if (["integer", "bigint", "decimal", "double"].includes(normalizedType)) {
+      return <DataBarVerticalRegular />;
+    }
+
+    if (normalizedType === "money") {
+      return <MoneyRegular />;
+    }
+
+    if (normalizedType === "boolean") {
+      return <CheckboxCheckedRegular />;
+    }
+
+    if (["datetime", "dateonly"].includes(normalizedType)) {
+      return <CalendarLtrRegular />;
+    }
+
+    if (normalizedType === "lookup" || normalizedType === "uniqueidentifier") {
+      return <LinkRegular />;
+    }
+
+    if (["customer", "owner", "partylist"].includes(normalizedType)) {
+      return <PeopleRegular />;
+    }
+
+    if (["picklist", "state", "status", "managedproperty"].includes(normalizedType)) {
+      return <AppsRegular />;
+    }
+
+    if (normalizedType === "virtual") {
+      return <CodeRegular />;
+    }
+
+    if (normalizedType === "image") {
+      return <ImageRegular />;
+    }
+
+    if (normalizedType === "file") {
+      return <TableRegular />;
+    }
+
+    if (normalizedType === "timezone") {
+      return <ClockRegular />;
+    }
+
+    if (normalizedType === "language") {
+      return <GlobeRegular />;
+    }
+
+    if (normalizedType === "memo") {
+      return <TextBulletListRegular />;
+    }
+
+    if (normalizedType === "float") {
+      return <DecimalArrowLeftRegular />;
+    }
+
+    return <DataPieRegular />;
+  }, []);
 
   const [selectedTable] = React.useState<TableMeta>(viewModel.tableMetadata.filter((t) => t.tableName === table)[0]);
   const [loadingMeta, setLoadingMeta] = React.useState(false);
@@ -89,7 +173,28 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     () => [
       { headerName: "Column Name", field: "displayName", sort: "asc" },
       { headerName: "Logical Name", field: "columnName" },
-      { headerName: "Data Type", field: "dataType" },
+      {
+        headerName: "Data Type",
+        field: "dataType",
+        cellRenderer: (params: CustomCellRendererProps<ColumnMeta>) => {
+          const dataType = params.data?.dataType || "Unknown";
+
+          return (
+            <Tooltip content={dataType} relationship="label">
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: tokens.spacingHorizontalXS,
+                }}
+              >
+                {getDataTypeIcon(dataType)}
+                <span>{dataType}</span>
+              </span>
+            </Tooltip>
+          );
+        },
+      },
       ...viewModel.columnAttributes
         .filter((attr) => !attr.custom)
         .map(
@@ -103,7 +208,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
             }) as ColDef<ColumnMeta>,
         ),
     ],
-    [viewModel.columnAttributes],
+    [getDataTypeIcon, viewModel.columnAttributes],
   );
 
   function colsSelected(event: SelectionChangedEvent<ColumnMeta>): void {

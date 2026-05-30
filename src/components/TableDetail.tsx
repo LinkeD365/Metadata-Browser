@@ -24,12 +24,14 @@ import {
   Body1,
   Field,
   Input,
+  Tooltip,
 } from "@fluentui/react-components";
 import {
   Add12Filled,
   ArrowExportUpRegular,
   ColumnEditRegular,
   Dismiss24Regular,
+  OpenRegular,
   Save24Regular,
 } from "@fluentui/react-icons";
 import { TableColumns } from "./TableColumns";
@@ -59,6 +61,16 @@ interface TableDetailProps {
 
 export const TableDetails = observer((props: TableDetailProps): React.JSX.Element => {
   const { connection, dvService, onLog, viewModel, table, selectedTable, isLoading, showNotification } = props;
+  const renderButtonWithTooltip = (
+    label: string,
+    button: React.ReactElement,
+    wrapDisabled = false,
+  ): React.JSX.Element => (
+    <Tooltip content={label} relationship="label">
+      {wrapDisabled ? <span>{button}</span> : button}
+    </Tooltip>
+  );
+
   const [selectedValue, setSelectedValue] = React.useState<TabValue>("details");
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedValue(data.value);
@@ -200,13 +212,19 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       .map((attr) => (
         <ListItem key={attr.name} value={attr.name} aria-label={attr.name}>
           {attr.name}{" "}
-          <Button
-            appearance="subtle"
-            icon={<Dismiss24Regular />}
-            onClick={() => {
-              viewModel.columnAttributes = viewModel.columnAttributes.filter((a) => a.name !== attr.name || !a.custom);
-            }}
-          />
+          {renderButtonWithTooltip(
+            `Remove custom attribute ${attr.name}`,
+            <Button
+              appearance="subtle"
+              aria-label={`Remove custom attribute ${attr.name}`}
+              icon={<Dismiss24Regular />}
+              onClick={() => {
+                viewModel.columnAttributes = viewModel.columnAttributes.filter(
+                  (a) => a.name !== attr.name || !a.custom,
+                );
+              }}
+            />,
+          )}
         </ListItem>
       ));
   }
@@ -545,6 +563,35 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     console.log("Attributes CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
   }
+
+  async function openTableSectionInBrowser(pathSuffix: string, sectionName: string): Promise<void> {
+    if (!connection) {
+      await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
+      return;
+    }
+
+    if (!selTable.metaId) {
+      onLog(`Cannot open ${sectionName} for table ${selTable.tableName}: missing table metadata ID.`, "warning");
+      return;
+    }
+
+    const toolboxUtils = window.toolboxAPI.utils as ToolBoxAPI.UtilsAPI & {
+      openInConnectionBrowser: (url: string, connectionTarget?: "primary" | "secondary") => Promise<void>;
+    };
+
+    try {
+      const tableUrl = await dvService.getTableBrowserUrl(selTable.metaId, pathSuffix);
+      await toolboxUtils.openInConnectionBrowser(tableUrl);
+    } catch (error) {
+      const message = (error as Error).message || "Unknown error";
+      onLog(`Failed to open ${sectionName} for table ${selTable.tableName}: ${message}`, "error");
+    }
+  }
+
+  async function openColumnsInBrowser(): Promise<void> {
+    await openTableSectionInBrowser("/fields", "columns");
+  }
+
   function exportSolutionsClick(): void {
     const title = ["Table:", selTable.displayName, selTable.tableName];
     const headers = ["Solution Name", "Unique Name", "Version", "Is Managed", "Description", "Root Component Behavior"];
@@ -603,14 +650,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     <OverlayDrawer position="end" open={isColumnEditOpen} onOpenChange={(_, { open }) => setIsColumnEditOpen(open)}>
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={
+          action={renderButtonWithTooltip(
+            "Close column attribute selector",
             <Button
               appearance="subtle"
-              aria-label="Close"
+              aria-label="Close column attribute selector"
               icon={<Dismiss24Regular />}
               onClick={() => setIsColumnEditOpen(false)}
-            />
-          }
+            />,
+          )}
         >
           Select attributes to display
         </DrawerHeaderTitle>
@@ -634,19 +682,43 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             <Input
               value={customColName}
               onChange={(e) => setCustomColName(e.target.value)}
-              contentAfter={<Button appearance="subtle" icon={<Add12Filled />} onClick={setCustomColumn} />}
+              contentAfter={renderButtonWithTooltip(
+                "Add custom column attribute",
+                <Button
+                  appearance="subtle"
+                  aria-label="Add custom column attribute"
+                  icon={<Add12Filled />}
+                  onClick={setCustomColumn}
+                />,
+              )}
             ></Input>
           </Field>
           <List>{customColAttrs()}</List>
         </div>
 
         <div style={{ display: "flex", width: "100%", marginTop: "10px" }}>
-          <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveColumnAttributes}>
-            Apply
-          </Button>
-          <Button onClick={saveColumnAttributesDefaults} icon={<Save24Regular />} appearance="subtle">
-            Save Defaults
-          </Button>
+          {renderButtonWithTooltip(
+            "Apply selected column attributes",
+            <Button
+              style={{ marginLeft: "auto" }}
+              appearance="primary"
+              aria-label="Apply selected column attributes"
+              onClick={saveColumnAttributes}
+            >
+              Apply
+            </Button>,
+          )}
+          {renderButtonWithTooltip(
+            "Save selected column attributes as defaults",
+            <Button
+              aria-label="Save selected column attributes as defaults"
+              onClick={saveColumnAttributesDefaults}
+              icon={<Save24Regular />}
+              appearance="subtle"
+            >
+              Save Defaults
+            </Button>,
+          )}
         </div>
       </DrawerFooter>
     </OverlayDrawer>
@@ -660,14 +732,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     >
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={
+          action={renderButtonWithTooltip(
+            "Close relationship attribute selector",
             <Button
               appearance="subtle"
-              aria-label="Close"
+              aria-label="Close relationship attribute selector"
               icon={<Dismiss24Regular />}
               onClick={() => setIsRelationshipsColumnsOpen(false)}
-            />
-          }
+            />,
+          )}
         >
           <Body1>{selectedValue} columns</Body1>
         </DrawerHeaderTitle>
@@ -685,10 +758,26 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveRelationshipAttrSelection}>
-          Save
-        </Button>
-        <Button onClick={saveRelationshipAttributesDefaults}>Set Default</Button>
+        {renderButtonWithTooltip(
+          `Save selected ${selectedValue} attributes`,
+          <Button
+            style={{ marginLeft: "auto" }}
+            appearance="primary"
+            aria-label={`Save selected ${selectedValue} attributes`}
+            onClick={saveRelationshipAttrSelection}
+          >
+            Save
+          </Button>,
+        )}
+        {renderButtonWithTooltip(
+          `Save selected ${selectedValue} attributes as defaults`,
+          <Button
+            aria-label={`Save selected ${selectedValue} attributes as defaults`}
+            onClick={saveRelationshipAttributesDefaults}
+          >
+            Set Default
+          </Button>,
+        )}
       </DrawerFooter>
     </OverlayDrawer>
   );
@@ -697,14 +786,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     <OverlayDrawer position="end" open={isViewColumnsOpen} onOpenChange={(_, { open }) => setIsViewColumnsOpen(open)}>
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={
+          action={renderButtonWithTooltip(
+            "Close view attribute selector",
             <Button
               appearance="subtle"
-              aria-label="Close"
+              aria-label="Close view attribute selector"
               icon={<Dismiss24Regular />}
               onClick={() => setIsViewColumnsOpen(false)}
-            />
-          }
+            />,
+          )}
         >
           <Body1>Views columns</Body1>
         </DrawerHeaderTitle>
@@ -722,10 +812,23 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveViewAttrSelection}>
-          Save
-        </Button>
-        <Button onClick={saveViewAttributesDefaults}>Set Default</Button>
+        {renderButtonWithTooltip(
+          "Save selected view attributes",
+          <Button
+            style={{ marginLeft: "auto" }}
+            appearance="primary"
+            aria-label="Save selected view attributes"
+            onClick={saveViewAttrSelection}
+          >
+            Save
+          </Button>,
+        )}
+        {renderButtonWithTooltip(
+          "Save selected view attributes as defaults",
+          <Button aria-label="Save selected view attributes as defaults" onClick={saveViewAttributesDefaults}>
+            Set Default
+          </Button>,
+        )}
       </DrawerFooter>
     </OverlayDrawer>
   );
@@ -738,14 +841,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     >
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={
+          action={renderButtonWithTooltip(
+            "Close business process flow attribute selector",
             <Button
               appearance="subtle"
-              aria-label="Close"
+              aria-label="Close business process flow attribute selector"
               icon={<Dismiss24Regular />}
               onClick={() => setIsBusinessProcessFlowColumnsOpen(false)}
-            />
-          }
+            />,
+          )}
         >
           <Body1>Business Process Flows columns</Body1>
         </DrawerHeaderTitle>
@@ -763,10 +867,26 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveBusinessProcessFlowAttrSelection}>
-          Save
-        </Button>
-        <Button onClick={saveBusinessProcessFlowAttributesDefaults}>Set Default</Button>
+        {renderButtonWithTooltip(
+          "Save selected business process flow attributes",
+          <Button
+            style={{ marginLeft: "auto" }}
+            appearance="primary"
+            aria-label="Save selected business process flow attributes"
+            onClick={saveBusinessProcessFlowAttrSelection}
+          >
+            Save
+          </Button>,
+        )}
+        {renderButtonWithTooltip(
+          "Save selected business process flow attributes as defaults",
+          <Button
+            aria-label="Save selected business process flow attributes as defaults"
+            onClick={saveBusinessProcessFlowAttributesDefaults}
+          >
+            Set Default
+          </Button>,
+        )}
       </DrawerFooter>
     </OverlayDrawer>
   );
@@ -779,14 +899,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     >
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={
+          action={renderButtonWithTooltip(
+            "Close business rule attribute selector",
             <Button
               appearance="subtle"
-              aria-label="Close"
+              aria-label="Close business rule attribute selector"
               icon={<Dismiss24Regular />}
               onClick={() => setIsBusinessRuleColumnsOpen(false)}
-            />
-          }
+            />,
+          )}
         >
           <Body1>Business Rules columns</Body1>
         </DrawerHeaderTitle>
@@ -804,10 +925,26 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       </DrawerBody>
 
       <DrawerFooter style={{ display: "flex", width: "100%" }}>
-        <Button style={{ marginLeft: "auto" }} appearance="primary" onClick={saveBusinessRuleAttrSelection}>
-          Save
-        </Button>
-        <Button onClick={saveBusinessRuleAttributesDefaults}>Set Default</Button>
+        {renderButtonWithTooltip(
+          "Save selected business rule attributes",
+          <Button
+            style={{ marginLeft: "auto" }}
+            appearance="primary"
+            aria-label="Save selected business rule attributes"
+            onClick={saveBusinessRuleAttrSelection}
+          >
+            Save
+          </Button>,
+        )}
+        {renderButtonWithTooltip(
+          "Save selected business rule attributes as defaults",
+          <Button
+            aria-label="Save selected business rule attributes as defaults"
+            onClick={saveBusinessRuleAttributesDefaults}
+          >
+            Set Default
+          </Button>,
+        )}
       </DrawerFooter>
     </OverlayDrawer>
   );
@@ -867,12 +1004,44 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                       style={{ marginRight: "10px" }}
                     />
                   )}
-                  <Button icon={<ColumnEditRegular />} onClick={editColumnsClick} />
-                  <Button
-                    icon={<ArrowExportUpRegular />}
-                    onClick={exportColumnsClick}
-                    disabled={selTable.selectedColumns.size === 0}
-                  />
+                  {renderButtonWithTooltip(
+                    "Choose visible columns",
+                    <Button
+                      aria-label="Choose visible columns"
+                      icon={<ColumnEditRegular />}
+                      onClick={editColumnsClick}
+                    />,
+                  )}
+                  {renderButtonWithTooltip(
+                    `Open ${selTable.displayName} columns in browser`,
+                    <Button
+                      aria-label={`Open ${selTable.displayName} columns in browser`}
+                      icon={<OpenRegular />}
+                      onClick={() => void openColumnsInBrowser()}
+                    />,
+                  )}
+                  {renderButtonWithTooltip(
+                    "Export selected columns",
+                    <Button
+                      aria-label="Export selected columns"
+                      icon={<ArrowExportUpRegular />}
+                      onClick={exportColumnsClick}
+                      disabled={selTable.selectedColumns.size === 0}
+                    />,
+                    true,
+                  )}
+                </div>
+              )}
+              {selectedValue === "keys" && (
+                <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
+                  {renderButtonWithTooltip(
+                    `Open ${selTable.displayName} keys in browser`,
+                    <Button
+                      aria-label={`Open ${selTable.displayName} keys in browser`}
+                      icon={<OpenRegular />}
+                      onClick={() => void openTableSectionInBrowser("/keys", "keys")}
+                    />,
+                  )}
                 </div>
               )}
               {(selectedValue as string).includes("Relationship") && (
@@ -886,30 +1055,60 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                       style={{ marginRight: "10px" }}
                     />
                   )}
-                  <Button icon={<ColumnEditRegular />} onClick={editRelationshipColumnsClick} />
-                  <Button
-                    icon={<ArrowExportUpRegular />}
-                    onClick={exportRelationshipClick}
-                    disabled={selTable.selectedRelationships.size === 0}
-                  />
+                  {renderButtonWithTooltip(
+                    `Choose visible ${selectedValue} columns`,
+                    <Button
+                      aria-label={`Choose visible ${selectedValue} columns`}
+                      icon={<ColumnEditRegular />}
+                      onClick={editRelationshipColumnsClick}
+                    />,
+                  )}
+                  {renderButtonWithTooltip(
+                    `Open ${selTable.displayName} relationships in browser`,
+                    <Button
+                      aria-label={`Open ${selTable.displayName} relationships in browser`}
+                      icon={<OpenRegular />}
+                      onClick={() => void openTableSectionInBrowser("/relationships", "relationships")}
+                    />,
+                  )}
+                  {renderButtonWithTooltip(
+                    `Export selected ${selectedValue} relationships`,
+                    <Button
+                      aria-label={`Export selected ${selectedValue} relationships`}
+                      icon={<ArrowExportUpRegular />}
+                      onClick={exportRelationshipClick}
+                      disabled={selTable.selectedRelationships.size === 0}
+                    />,
+                    true,
+                  )}
                 </div>
               )}
               {selectedValue === "Privileges" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
-                  <Button
-                    icon={<ArrowExportUpRegular />}
-                    onClick={exportPrivilegesClick}
-                    disabled={selTable.privileges.length === 0}
-                  />
+                  {renderButtonWithTooltip(
+                    "Export privileges",
+                    <Button
+                      aria-label="Export privileges"
+                      icon={<ArrowExportUpRegular />}
+                      onClick={exportPrivilegesClick}
+                      disabled={selTable.privileges.length === 0}
+                    />,
+                    true,
+                  )}
                 </div>
               )}
               {selectedValue === "Solutions" && (
                 <div style={{ marginLeft: "auto", padding: "10px 10px" }}>
-                  <Button
-                    icon={<ArrowExportUpRegular />}
-                    onClick={exportSolutionsClick}
-                    disabled={selTable.solutions.length === 0}
-                  />
+                  {renderButtonWithTooltip(
+                    "Export solutions",
+                    <Button
+                      aria-label="Export solutions"
+                      icon={<ArrowExportUpRegular />}
+                      onClick={exportSolutionsClick}
+                      disabled={selTable.solutions.length === 0}
+                    />,
+                    true,
+                  )}
                 </div>
               )}
               {selectedValue === "Views" && (
@@ -923,7 +1122,22 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                       style={{ marginRight: "10px" }}
                     />
                   )}
-                  <Button icon={<ColumnEditRegular />} onClick={editViewColumnsClick} />
+                  {renderButtonWithTooltip(
+                    "Choose visible view columns",
+                    <Button
+                      aria-label="Choose visible view columns"
+                      icon={<ColumnEditRegular />}
+                      onClick={editViewColumnsClick}
+                    />,
+                  )}
+                  {renderButtonWithTooltip(
+                    `Open ${selTable.displayName} views in browser`,
+                    <Button
+                      aria-label={`Open ${selTable.displayName} views in browser`}
+                      icon={<OpenRegular />}
+                      onClick={() => void openTableSectionInBrowser("/views", "views")}
+                    />,
+                  )}
                 </div>
               )}
               {selectedValue === "BusinessProcessFlows" && (
@@ -937,7 +1151,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                       style={{ marginRight: "10px" }}
                     />
                   )}
-                  <Button icon={<ColumnEditRegular />} onClick={editBusinessProcessFlowColumnsClick} />
+                  {renderButtonWithTooltip(
+                    "Choose visible business process flow columns",
+                    <Button
+                      aria-label="Choose visible business process flow columns"
+                      icon={<ColumnEditRegular />}
+                      onClick={editBusinessProcessFlowColumnsClick}
+                    />,
+                  )}
                 </div>
               )}
               {selectedValue === "BusinessRules" && (
@@ -951,7 +1172,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                       style={{ marginRight: "10px" }}
                     />
                   )}
-                  <Button icon={<ColumnEditRegular />} onClick={editBusinessRuleColumnsClick} />
+                  {renderButtonWithTooltip(
+                    "Choose visible business rule columns",
+                    <Button
+                      aria-label="Choose visible business rule columns"
+                      icon={<ColumnEditRegular />}
+                      onClick={editBusinessRuleColumnsClick}
+                    />,
+                  )}
                 </div>
               )}
               {selectedValue === "details" && (
@@ -963,7 +1191,14 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                     onChange={attributeSearch}
                     style={{ marginRight: "10px" }}
                   />
-                  <Button icon={<ArrowExportUpRegular />} onClick={exportTableDetailClick} />
+                  {renderButtonWithTooltip(
+                    "Export table details",
+                    <Button
+                      aria-label="Export table details"
+                      icon={<ArrowExportUpRegular />}
+                      onClick={exportTableDetailClick}
+                    />,
+                  )}
                 </div>
               )}
             </div>

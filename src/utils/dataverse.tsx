@@ -5,6 +5,12 @@ import { Solution } from "../model/solution";
 import { KeyMeta, PrivilegeMeta, RelationshipMeta, TableMeta } from "../model/tableMeta";
 import { ViewMeta } from "../model/view";
 
+interface RetrieveCurrentOrganizationResponse {
+  Detail?: {
+    EnvironmentId?: string;
+  };
+}
+
 interface dvServiceProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
@@ -14,11 +20,59 @@ export class dvService {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
+  private cachedEnvironmentId: string | null = null;
+  private environmentIdRequest: Promise<string> | null = null;
 
   constructor(props: dvServiceProps) {
     this.connection = props.connection;
     this.dvApi = props.dvApi;
     this.onLog = props.onLog;
+  }
+
+  async getEnvironmentId(): Promise<string> {
+    if (!this.connection) {
+      throw new Error("No connection available");
+    }
+
+    if (this.cachedEnvironmentId) {
+      return this.cachedEnvironmentId;
+    }
+
+    if (this.environmentIdRequest) {
+      return this.environmentIdRequest;
+    }
+
+    const requestPath =
+      "RetrieveCurrentOrganization(AccessType=@p1)?@p1=Microsoft.Dynamics.CRM.EndpointAccessType'Default'";
+
+    this.environmentIdRequest = this.dvApi
+      .queryData(requestPath)
+      .then((response) => {
+        const environmentId = (response as RetrieveCurrentOrganizationResponse)?.Detail?.EnvironmentId?.trim();
+
+        if (!environmentId) {
+          throw new Error("RetrieveCurrentOrganization did not return an environment ID");
+        }
+
+        this.cachedEnvironmentId = environmentId;
+        return environmentId;
+      })
+      .finally(() => {
+        this.environmentIdRequest = null;
+      });
+
+    return this.environmentIdRequest;
+  }
+
+  async getTableBrowserUrl(tableMetaId: string, pathSuffix = ""): Promise<string> {
+    if (!tableMetaId) {
+      throw new Error("No table metadata ID available");
+    }
+
+    const environmentId = await this.getEnvironmentId();
+    const normalizedSuffix = pathSuffix ? (pathSuffix.startsWith("/") ? pathSuffix : `/${pathSuffix}`) : "";
+
+    return `https://make.powerapps.com/environments/${encodeURIComponent(environmentId)}/entities/${encodeURIComponent(tableMetaId)}${normalizedSuffix}`;
   }
 
   /// Get metadata for all tables
