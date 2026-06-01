@@ -12,25 +12,41 @@ interface RetrieveCurrentOrganizationResponse {
 }
 
 interface dvServiceProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
+  primaryConnection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 export class dvService {
-  connection: ToolBoxAPI.DataverseConnection | null;
+  primaryConnection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   private cachedEnvironmentId: string | null = null;
   private environmentIdRequest: Promise<string> | null = null;
 
   constructor(props: dvServiceProps) {
-    this.connection = props.connection;
+    this.primaryConnection = props.primaryConnection;
+    this.secondaryConnection = props.secondaryConnection;
     this.dvApi = props.dvApi;
     this.onLog = props.onLog;
   }
 
-  async getEnvironmentId(): Promise<string> {
-    if (!this.connection) {
+  private resolveConnection(connectionTarget: "primary" | "secondary") {
+    return connectionTarget === "secondary" ? this.secondaryConnection : this.primaryConnection;
+  }
+
+  private queryData(odataQuery: string, connectionTarget: "primary" | "secondary" = "primary") {
+    return this.dvApi.queryData(odataQuery, connectionTarget);
+  }
+
+  private fetchXmlQuery(fetchXml: string, connectionTarget: "primary" | "secondary" = "primary") {
+    return this.dvApi.fetchXmlQuery(fetchXml, connectionTarget);
+  }
+
+  async getEnvironmentId(connectionTarget: "primary" | "secondary" = "primary"): Promise<string> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
 
@@ -45,8 +61,7 @@ export class dvService {
     const requestPath =
       "RetrieveCurrentOrganization(AccessType=@p1)?@p1=Microsoft.Dynamics.CRM.EndpointAccessType'Default'";
 
-    this.environmentIdRequest = this.dvApi
-      .queryData(requestPath)
+    this.environmentIdRequest = this.queryData(requestPath, connectionTarget)
       .then((response) => {
         const environmentId = (response as RetrieveCurrentOrganizationResponse)?.Detail?.EnvironmentId?.trim();
 
@@ -64,12 +79,16 @@ export class dvService {
     return this.environmentIdRequest;
   }
 
-  async getTableBrowserUrl(tableMetaId: string, pathSuffix = ""): Promise<string> {
+  async getTableBrowserUrl(
+    tableMetaId: string,
+    pathSuffix = "",
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<string> {
     if (!tableMetaId) {
       throw new Error("No table metadata ID available");
     }
 
-    const environmentId = await this.getEnvironmentId();
+    const environmentId = await this.getEnvironmentId(connectionTarget);
     const normalizedSuffix = pathSuffix ? (pathSuffix.startsWith("/") ? pathSuffix : `/${pathSuffix}`) : "";
 
     return `https://make.powerapps.com/environments/${encodeURIComponent(environmentId)}/entities/${encodeURIComponent(tableMetaId)}${normalizedSuffix}`;
@@ -78,19 +97,20 @@ export class dvService {
   /// Get metadata for all tables
   /// @returns Promise<TableMeta[]> - A promise that resolves to an array of TableMeta
   /// @todo : Need to swap back to toolbox code when fixed
-  async getAllTables(): Promise<TableMeta[]> {
+  async getAllTables(primary: boolean): Promise<TableMeta[]> {
     this.onLog("Fetching table metadata...", "info");
-    if (!this.connection) {
+    const connection = primary ? this.primaryConnection : this.secondaryConnection;
+    if (!connection) {
       throw new Error("No connection available");
     }
     //const tables = await this.dvApi.getAllEntitiesMetadata();
-    const tables = await this.dvApi.queryData("EntityDefinitions");
+    const tables = await this.queryData("EntityDefinitions", primary ? "primary" : "secondary");
     //console.log("Tables fetched: ", tables.value);
     const tableMetaList: TableMeta[] = (tables.value as any[]).map((table: any) => {
       //console.log("Table fetched: ", table);
       const tableMeta = new TableMeta();
       tableMeta.tableName = String(table.LogicalName);
-      tableMeta.displayName = table.DisplayName?.LocalizedLabels?.[0]?.Label || table.LogicalName;
+      tableMeta.primaryDisplayName = table.DisplayName?.LocalizedLabels?.[0]?.Label || table.LogicalName;
       tableMeta.metaId = table.MetadataId || "";
       tableMeta.attributes = [];
       tableMeta.typeCode = table.ObjectTypeCode;
@@ -118,14 +138,15 @@ export class dvService {
   // @todo: Need to swap back to toolbox code when fixed
   // @param table - The logical name of the table
   // @returns Promise<ColumnMeta[]> - A promise that resolves to an array of ColumnMeta
-  async getColumnsMeta(table: string): Promise<ColumnMeta[]> {
+  async getColumnsMeta(table: string, connectionTarget: "primary" | "secondary" = "primary"): Promise<ColumnMeta[]> {
     this.onLog(`Fetching column metadata for table: ${table}`, "info");
-    if (!this.connection) {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
     try {
       //const meta = await this.dvApi.getEntityMetadata(table, true);
-      const meta = await this.dvApi.queryData(`EntityDefinitions(LogicalName='${table}')/Attributes`);
+      const meta = await this.queryData(`EntityDefinitions(LogicalName='${table}')/Attributes`, connectionTarget);
 
       //  console.log("Attributes fetched: ", meta.value);
 
@@ -161,17 +182,19 @@ export class dvService {
     }
   }
 
-  async getSolutions(managed: boolean): Promise<Solution[]> {
+  async getSolutions(managed: boolean, connectionTarget: "primary" | "secondary" = "primary"): Promise<Solution[]> {
     this.onLog("Fetching solutions...", "info");
-    console.log("Fetching solutions, connection: ", this.connection);
-    if (!this.connection) {
+    const connection = this.resolveConnection(connectionTarget);
+    console.log("Fetching solutions, connection: ", connection);
+    if (!connection) {
       throw new Error("No connection available");
     }
 
-    const solutionsData = await this.dvApi.queryData(
+    const solutionsData = await this.queryData(
       "solutions?$filter=(isvisible eq true) and ismanaged eq " +
         (managed ? "true" : "false") +
         " &$select=friendlyname,uniquename&$orderby=createdon desc",
+      connectionTarget,
     );
     const solutions: Solution[] = (solutionsData.value as any[]).map((sol: any) => {
       const solution = new Solution();
@@ -184,15 +207,19 @@ export class dvService {
     return solutions;
   }
 
-  async getSolutionTables(solutionUniqueName: string): Promise<TableMeta[]> {
+  async getSolutionTables(
+    solutionUniqueName: string,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<TableMeta[]> {
     this.onLog(`Fetching tables for solution: ${solutionUniqueName}`, "info");
-    if (!this.connection) {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
     const query = `solutioncomponents?$select=objectid&$expand=solutionid($select=solutionid)&$filter=(componenttype eq 1) and (solutionid/uniquename eq '${solutionUniqueName}')`;
 
     try {
-      const componentsData = await this.dvApi.queryData(query);
+      const componentsData = await this.queryData(query, connectionTarget);
       console.log("Solution components fetched: ", componentsData.value);
       const compArray = componentsData.value as any[];
 
@@ -201,7 +228,7 @@ export class dvService {
         if (!objectId) return null;
         try {
           // Try fetching the entity definition by id
-          const entityMeta = await this.dvApi.queryData(`EntityDefinitions(${objectId})`);
+          const entityMeta = await this.queryData(`EntityDefinitions(${objectId})`, connectionTarget);
           // normalize the response: if entityMeta has a value array, use the first element, otherwise use the object itself
           const src: any = Array.isArray((entityMeta as any)?.value)
             ? (entityMeta as any).value[0]
@@ -209,7 +236,7 @@ export class dvService {
 
           const tm = new TableMeta();
           tm.tableName = src?.LogicalName || String(objectId);
-          tm.displayName = src?.DisplayName?.LocalizedLabels?.[0]?.Label || tm.tableName;
+          tm.primaryDisplayName = src?.DisplayName?.LocalizedLabels?.[0]?.Label || tm.tableName;
           tm.metaId = src?.MetadataId || "";
           tm.attributes = [];
           tm.typeCode = src?.ObjectTypeCode;
@@ -248,13 +275,66 @@ export class dvService {
     }
   }
 
-  async getKeysMeta(selectedTable: TableMeta): Promise<KeyMeta[]> {
-    if (!this.connection) {
+  async getTableByLogicalName(
+    logicalName: string,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<TableMeta | null> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
+      throw new Error("No connection available");
+    }
+
+    if (!logicalName?.trim()) {
+      return null;
+    }
+
+    try {
+      const tableData = await this.queryData(`EntityDefinitions(LogicalName='${logicalName}')`, connectionTarget);
+      const src: any = Array.isArray((tableData as any)?.value) ? (tableData as any).value[0] : (tableData as any);
+
+      if (!src?.LogicalName) {
+        return null;
+      }
+
+      const tm = new TableMeta();
+      tm.tableName = src.LogicalName;
+      tm.primaryDisplayName = src.DisplayName?.LocalizedLabels?.[0]?.Label || src.LogicalName;
+      tm.metaId = src.MetadataId || "";
+      tm.typeCode = src.ObjectTypeCode;
+
+      Object.keys(src).forEach((prop) => {
+        const value = src[prop];
+        if (typeof value === "function") return;
+        try {
+          tm.attributes.push({
+            attributeName: prop,
+            attributeValue: typeof value === "string" ? value : JSON.stringify(value),
+          });
+        } catch {
+          tm.attributes.push({
+            attributeName: prop,
+            attributeValue: String(value),
+          });
+        }
+      });
+
+      return tm;
+    } catch {
+      return null;
+    }
+  }
+
+  async getKeysMeta(
+    selectedTable: TableMeta,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<KeyMeta[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
     try {
       this.onLog(`Fetching keys metadata for table: ${selectedTable.tableName}`, "info");
-      const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Keys`);
+      const meta = await this.queryData(`EntityDefinitions(${selectedTable.metaId})/Keys`, connectionTarget);
       const keyMetaList: KeyMeta[] = (meta.value as any).map((key: any) => {
         // console.log("Processing key: ", key);
         const keyMeta = new KeyMeta();
@@ -287,13 +367,17 @@ export class dvService {
     }
   }
 
-  async getPrivilegesMetadata(selectedTable: TableMeta): Promise<PrivilegeMeta[]> {
-    if (!this.connection) {
+  async getPrivilegesMetadata(
+    selectedTable: TableMeta,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<PrivilegeMeta[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
     try {
       this.onLog(`Fetching privileges metadata for table: ${selectedTable.tableName}`, "info");
-      const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/Privileges`);
+      const meta = await this.queryData(`EntityDefinitions(${selectedTable.metaId})/Privileges`, connectionTarget);
       const keyMetaList: PrivilegeMeta[] = (meta.value as any).map((privilege: any) => {
         // console.log("Processing key: ", privilege);
         const privMeta = new PrivilegeMeta();
@@ -326,13 +410,18 @@ export class dvService {
     }
   }
 
-  async getRelationshipsMeta(selectedTable: TableMeta, type: string): Promise<RelationshipMeta[]> {
-    if (!this.connection) {
+  async getRelationshipsMeta(
+    selectedTable: TableMeta,
+    type: string,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<RelationshipMeta[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
     try {
       this.onLog(`Fetching relationships metadata for table: ${selectedTable.tableName} type: ${type}`, "info");
-      const meta = await this.dvApi.queryData(`EntityDefinitions(${selectedTable.metaId})/${type}s`);
+      const meta = await this.queryData(`EntityDefinitions(${selectedTable.metaId})/${type}s`, connectionTarget);
       const relationships: RelationshipMeta[] = (meta.value as any).map((relationship: any) => {
         const relationshipMeta = new RelationshipMeta();
         relationshipMeta.relationshipName = relationship.SchemaName;
@@ -365,8 +454,12 @@ export class dvService {
     }
   }
 
-  async getSolutionsForTable(selectedTable: TableMeta): Promise<Solution[]> {
-    if (!this.connection) {
+  async getSolutionsForTable(
+    selectedTable: TableMeta,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<Solution[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
     try {
@@ -392,7 +485,7 @@ export class dvService {
   </entity>
 </fetch>`;
       console.log("FetchXML for solutions: ", fetchXml);
-      const meta = await this.dvApi.fetchXmlQuery(fetchXml);
+      const meta = await this.fetchXmlQuery(fetchXml, connectionTarget);
       console.log("Solutions fetched: ", meta);
       const solutions: Solution[] = (meta.value as any).map((solution: any) => {
         // console.log("Processing Solution: ", solution);
@@ -432,8 +525,12 @@ export class dvService {
     }
   }
 
-  async getViewsForTable(selectedTable: TableMeta): Promise<ViewMeta[]> {
-    if (!this.connection) {
+  async getViewsForTable(
+    selectedTable: TableMeta,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<ViewMeta[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
 
@@ -445,8 +542,8 @@ export class dvService {
       const personalViewsQuery = "userqueries?$filter=returnedtypecode eq '" + selectedTable.tableName + "'";
 
       const [systemViewsData, personalViewsData] = await Promise.all([
-        this.dvApi.queryData(systemViewsQuery),
-        this.dvApi.queryData(personalViewsQuery),
+        this.queryData(systemViewsQuery, connectionTarget),
+        this.queryData(personalViewsQuery, connectionTarget),
       ]);
 
       const systemViews = (systemViewsData.value as any[]).map((view: any) => {
@@ -507,8 +604,12 @@ export class dvService {
     }
   }
 
-  async getBusinessProcessFlowsForTable(selectedTable: TableMeta): Promise<BusinessProcessFlowMeta[]> {
-    if (!this.connection) {
+  async getBusinessProcessFlowsForTable(
+    selectedTable: TableMeta,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<BusinessProcessFlowMeta[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
 
@@ -517,7 +618,7 @@ export class dvService {
 
       const bpfQuery = "workflows?$filter=category eq 4 and primaryentity eq '" + selectedTable.tableName + "'";
 
-      const bpfData = await this.dvApi.queryData(bpfQuery);
+      const bpfData = await this.queryData(bpfQuery, connectionTarget);
 
       const flows = (bpfData.value as any[]).map((flow: any) => {
         const bpfMeta = new BusinessProcessFlowMeta();
@@ -553,8 +654,12 @@ export class dvService {
     }
   }
 
-  async getBusinessRulesForTable(selectedTable: TableMeta): Promise<BusinessRuleMeta[]> {
-    if (!this.connection) {
+  async getBusinessRulesForTable(
+    selectedTable: TableMeta,
+    connectionTarget: "primary" | "secondary" = "primary",
+  ): Promise<BusinessRuleMeta[]> {
+    const connection = this.resolveConnection(connectionTarget);
+    if (!connection) {
       throw new Error("No connection available");
     }
 
@@ -564,7 +669,7 @@ export class dvService {
       const businessRulesQuery =
         "workflows?$filter=category eq 2 and primaryentity eq '" + selectedTable.tableName + "'";
 
-      const businessRulesData = await this.dvApi.queryData(businessRulesQuery);
+      const businessRulesData = await this.queryData(businessRulesQuery, connectionTarget);
 
       const rules = (businessRulesData.value as any[]).map((rule: any) => {
         const ruleMeta = new BusinessRuleMeta();

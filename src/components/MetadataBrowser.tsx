@@ -1,9 +1,14 @@
 import React, { useCallback } from "react";
 import { observer } from "mobx-react";
-import { ColDef, RowSelectionOptions, SelectionChangedEvent } from "ag-grid-community";
+import {
+  ColDef,
+  RowSelectionOptions,
+  SelectionChangedEvent,
+  RowStyleModule,
+  ValidationModule,
+} from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
-
 import {
   Button,
   InputOnChangeData,
@@ -31,13 +36,14 @@ import {
 } from "@fluentui/react-components";
 
 import { ViewModel } from "../model/ViewModel";
-import { dvService } from "../utils/dataverse";
+import { dvService as DataverseService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
 import { ColumnEditRegular, OpenRegular, TextboxMoreRegular } from "@fluentui/react-icons";
 import { ExportPopover } from "./ExportPopover";
 import { TableColumnDrawer } from "./TableColumnDrawer";
 import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -45,15 +51,16 @@ const useStyles = makeStyles({
 });
 
 interface MetadataBrowserProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  dvService: dvService;
+  primaryConnection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  dvService: DataverseService;
   isLoading: boolean;
   vm: ViewModel;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 
 export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX.Element => {
-  const { connection, dvService, onLog, vm } = props;
+  const { primaryConnection, secondaryConnection, dvService, onLog, vm } = props;
   const selectSolutionLabel = "Select a solution to load tables";
   const openTableSourceOptionsLabel = "Open table source options";
   const openExportDialogLabel = "Open export dialog";
@@ -77,7 +84,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     } else
       return vm.tableMetadata.filter(
         (t) =>
-          t.displayName.toLowerCase().includes(tableQuery.toLowerCase()) ||
+          t.primaryDisplayName.toLowerCase().includes(tableQuery.toLowerCase()) ||
+          t.secondaryDisplayName?.toLowerCase().includes(tableQuery.toLowerCase()) ||
           t.tableName.toLowerCase().includes(tableQuery.toLowerCase()),
       );
   }, [tableQuery, vm.tableMetadata]);
@@ -94,9 +102,76 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     [],
   );
 
+  const mergeTableMetadata = useCallback((primaryTables: TableMeta[], secondaryTables: TableMeta[]): TableMeta[] => {
+    return mergeConnectionComparisonRecords(
+      primaryTables,
+      secondaryTables,
+      (table) => table.tableName,
+      (table) => table.primaryDisplayName,
+    );
+  }, []);
+
+  const getMergedAllTables = useCallback(async (): Promise<TableMeta[]> => {
+    const canLoadPrimary = Boolean(primaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
+      throw new Error("No connection available");
+    }
+
+    const [primaryTables, secondaryTables] = await Promise.all([
+      canLoadPrimary ? dvService.getAllTables(true) : Promise.resolve([]),
+      canLoadSecondary ? dvService.getAllTables(false) : Promise.resolve([]),
+    ]);
+
+    return mergeTableMetadata(primaryTables, secondaryTables);
+  }, [dvService, mergeTableMetadata, primaryConnection, secondaryConnection]);
+
+  const getMergedSolutionTables = useCallback(async (): Promise<TableMeta[]> => {
+    if (!vm.selectedSolution) {
+      return [];
+    }
+
+    const canLoadPrimary = Boolean(primaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
+      throw new Error("No connection available");
+    }
+
+    if (canLoadPrimary) {
+      const primaryTables = await dvService.getSolutionTables(vm.selectedSolution.uniqueName, "primary");
+
+      if (!canLoadSecondary) {
+        return mergeTableMetadata(primaryTables, []);
+      }
+
+      const secondaryLookups = await Promise.all(
+        primaryTables.map((primaryTable) => dvService.getTableByLogicalName(primaryTable.tableName, "secondary")),
+      );
+      const secondaryTables = secondaryLookups.filter((table): table is TableMeta => Boolean(table));
+
+      return mergeTableMetadata(primaryTables, secondaryTables);
+    }
+
+    const secondaryTables = canLoadSecondary
+      ? await dvService
+          .getSolutionTables(vm.selectedSolution.uniqueName, "secondary")
+          .catch((error: { message?: string }) => {
+            onLog(
+              `Unable to load solution tables from secondary connection for ${vm.selectedSolution?.solutionName}: ${error.message ?? "Unknown error"}`,
+              "warning",
+            );
+            return [];
+          })
+      : [];
+
+    return mergeTableMetadata([], secondaryTables);
+  }, [dvService, mergeTableMetadata, onLog, primaryConnection, secondaryConnection, vm.selectedSolution]);
+
   const openTableInConnectionBrowser = useCallback(
     async (table: TableMeta) => {
-      if (!connection) {
+      if (!primaryConnection) {
         onLog("Cannot open table: no active connection available.", "warning");
         await showNotification("No active connection", "Please connect before opening a table.", "warning");
         return;
@@ -118,7 +193,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         onLog(`Failed to open table ${table.tableName}: ${message}`, "error");
       }
     },
-    [connection, onLog, showNotification],
+    [primaryConnection, onLog, showNotification],
   );
 
   const renderOpenTableButton = useCallback(
@@ -131,9 +206,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         stopPropagation?: boolean;
       },
     ) => (
-      <Tooltip content={`Open ${table.displayName} definition in browser`} relationship="label">
+      <Tooltip content={`Open ${table.primaryDisplayName} definition in browser`} relationship="label">
         <Button
-          aria-label={`Open ${table.displayName} definition in browser`}
+          aria-label={`Open ${table.primaryDisplayName} definition in browser`}
           icon={<OpenRegular fontSize={options?.iconFontSize} />}
           size={options?.size ?? "small"}
           appearance={options?.appearance ?? "secondary"}
@@ -155,13 +230,13 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         .getSolutions(managed)
         .then((solutions) => {
           vm.solutions = solutions;
-          onLog(`Loaded ${solutions.length} solutions from ${connection?.name}`, "success");
+          onLog(`Loaded ${solutions.length} solutions from ${primaryConnection?.name}`, "success");
         })
         .catch((error: { message: any }) => {
           onLog(`Error loading solutions: ${error.message}`, "error");
         });
     }
-  }, [isSolutionSelOpen, managed]);
+  }, [isSolutionSelOpen, managed, primaryConnection]);
 
   async function getAllTableMeta() {
     vm.selectedSolution = undefined;
@@ -170,12 +245,13 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   async function getTableMeta() {
     setLoadingMeta(true);
     if (vm.selectedSolution) {
-      await dvService
-        .getSolutionTables(vm.selectedSolution.uniqueName)
+      await getMergedSolutionTables()
         .then((tables) => {
           vm.tableMetadata = tables;
-          console.log(tables);
-          onLog(`Loaded ${tables.length} tables from solution: ${vm.selectedSolution?.solutionName}`, "success");
+          onLog(
+            `Loaded ${tables.length} tables from solution: ${vm.selectedSolution?.solutionName} (${primaryConnection?.name}${secondaryConnection ? ` and ${secondaryConnection.name}` : ""})`,
+            "success",
+          );
         })
         .catch((error: { message: any }) => {
           onLog(`Error loading tables from solution: ${error.message}`, "error");
@@ -184,11 +260,13 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
           setLoadingMeta(false);
         });
     } else {
-      await dvService
-        .getAllTables()
+      await getMergedAllTables()
         .then((tables) => {
           vm.tableMetadata = tables;
-          onLog(`Loaded ${tables.length} tables from ${connection?.name}`, "success");
+          onLog(
+            `Loaded ${tables.length} tables from ${primaryConnection?.name}${secondaryConnection ? ` and ${secondaryConnection.name}` : ""}`,
+            "success",
+          );
         })
         .catch((error: { message: any }) => {
           onLog(`Error loading tables: ${error.message}`, "error");
@@ -241,7 +319,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
     const headers = ["Table Name", "Logical Name", ...vm.tableAttributes.map((attr) => attr)];
     const rows = data.map((table) => [
-      table.displayName,
+      table.primaryDisplayName,
       table.tableName,
       ...vm.tableAttributes.map((attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""),
     ]);
@@ -293,7 +371,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       const exists = vm.selectedTables.some((t) => t.tableName === item.tableName);
       if (!exists) {
         vm.selectedTables.push(item);
-        onLog(`Added "${item.displayName}" to selected tables.`, "success");
+        onLog(`Added "${item.primaryDisplayName}" to selected tables.`, "success");
       }
       setSelectedTab(item.tableName as TabValue);
     },
@@ -305,7 +383,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       (vm.selectedTables ?? []).map((t) => (
         <Tab key={t.tableName} id={`Table-${t.tableName}`} value={t.tableName as TabValue}>
           <span className={styles.tabLabel}>
-            <span>{t.displayName}</span>
+            <span>{t.primaryDisplayName}</span>
             {renderOpenTableButton(t, {
               appearance: "subtle",
               size: "small",
@@ -322,7 +400,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const tableDetails = vm.selectedTables?.map((t) => (
     <div key={t.tableName} role="tabpanel" aria-labelledby={`Table-${t.tableName}`}>
       <TableDetails
-        connection={connection}
+        primaryConnection={primaryConnection}
+        secondaryConnection={secondaryConnection}
         dvService={dvService}
         isLoading={loadingMeta}
         viewModel={vm}
@@ -355,7 +434,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         maxWidth: 60,
         minWidth: 60,
         cellRenderer: (params: CustomCellRendererProps<TableMeta>) => {
-          const label = `Open details tab for ${params.data?.displayName ?? "table"}`;
+          const label = `Open details tab for ${params.data?.primaryDisplayName ?? "table"}`;
           return (
             <Tooltip content={label} relationship="label">
               <Button
@@ -387,11 +466,24 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         },
       },
       {
-        headerName: "Table Name",
-        field: "displayName",
+        headerName:
+          secondaryConnection && primaryConnection?.name ? `Table Name (${primaryConnection.name})` : "Table Name",
+        field: "primaryDisplayName",
         flex: 2,
         sort: "asc",
+        //valueGetter: (params) => (params.data?.hasPrimaryConnection ? params.data.primaryDisplayName : ""),
       },
+      ...(secondaryConnection
+        ? [
+            {
+              headerName: secondaryConnection.name ? `2nd Table Name (${secondaryConnection.name})` : "2nd Table Name",
+              field: "secondaryDisplayName",
+              flex: 2,
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } satisfies ColDef<TableMeta>,
+          ]
+        : []),
       {
         headerName: "Logical Name",
         field: "tableName",
@@ -409,7 +501,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             }) as ColDef<TableMeta>,
         ),
     ],
-    [renderOpenTableButton, vm.tableAttributes],
+    [primaryConnection, renderOpenTableButton, secondaryConnection, vm.tableAttributes],
   );
 
   const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
@@ -417,6 +509,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       mode: "multiRow",
     };
   }, []);
+
+  const rowClassRules = React.useMemo(
+    () => createConnectionRowClassRules<TableMeta>(Boolean(secondaryConnection)),
+    [secondaryConnection],
+  );
 
   function tableSelected(event: SelectionChangedEvent<TableMeta>): void {
     const selectedRows = event.api.getSelectedRows();
@@ -429,9 +526,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     <div style={{ width: "98vw", height: "93vh" }}>
       <AgGridReact<TableMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule, ValidationModule]}
         rowData={filterdTableMetadata}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
+        rowClassRules={rowClassRules}
         domLayout="normal"
         rowSelection={rowSelection}
         onSelectionChanged={tableSelected}
@@ -581,7 +680,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         <div>
           {isExportPopoverOpen && (
             <ExportPopover
-              connection={connection}
+              connection={primaryConnection}
               dvSvc={dvService}
               vm={vm}
               isExportOpen={isExportPopoverOpen}

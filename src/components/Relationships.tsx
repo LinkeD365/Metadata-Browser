@@ -8,10 +8,12 @@ import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-comm
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { ViewModel } from "../model/ViewModel";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 
 interface RelationshipsProps {
   viewModel: ViewModel;
   connection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -21,7 +23,7 @@ interface RelationshipsProps {
 }
 
 export const Relationships = observer((props: RelationshipsProps): React.JSX.Element => {
-  const { connection, dvService, onLog, selectedTable, showNotification, type, viewModel } = props;
+  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification, type, viewModel } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
@@ -32,7 +34,10 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
   }, [selectedTable]);
 
   async function getRelationshipMeta() {
-    if (!connection) {
+    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -40,16 +45,21 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
     //console.log("Fetching Relationships metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
-    await dvService
-      .getRelationshipsMeta(selectedTable, type)
-      .then((relationships) => {
-        console.log("Relationships metadata loaded: ", relationships);
-        selectedTable.relationships.push(...relationships);
-        onLog(`Loaded ${relationships.length} relationships for table: ${selectedTable.tableName}`, "success");
-      })
-      .catch((error: { message: any }) => {
-        onLog(`Error loading relationships for table ${selectedTable.tableName}: ${error.message}`, "error");
-      });
+    const [primaryRelationships, secondaryRelationships] = await Promise.all([
+      canLoadPrimary ? dvService.getRelationshipsMeta(selectedTable, type, "primary") : Promise.resolve([]),
+      canLoadSecondary ? dvService.getRelationshipsMeta(selectedTable, type, "secondary") : Promise.resolve([]),
+    ]);
+
+    selectedTable.relationships = mergeConnectionComparisonRecords(
+      primaryRelationships,
+      secondaryRelationships,
+      (relationship) => relationship.relationshipName,
+      (relationship) => relationship.relationshipName,
+    );
+    onLog(
+      `Loaded ${selectedTable.relationships.length} relationships for table: ${selectedTable.tableName}`,
+      "success",
+    );
     setLoadingMeta(false);
     return;
   }
@@ -98,8 +108,28 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
   }, [selectedTable.relationships.length, type, viewModel.relationshipAttributes]);
 
   const colDefs = React.useMemo<ColDef<RelationshipMeta>[]>(
-    () => [{ headerName: "Relationship Name", field: "relationshipName", flex: 2, sort: "asc" }, ...createRelAttribs],
-    [createRelAttribs],
+    () => [
+      { headerName: "Relationship Name", field: "relationshipName", flex: 2, sort: "asc" },
+      ...(secondaryConnection
+        ? [
+            {
+              headerName: secondaryConnection.name
+                ? `2nd Relationship Name (${secondaryConnection.name})`
+                : "2nd Relationship Name",
+              field: "secondaryDisplayName",
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } as ColDef<RelationshipMeta>,
+          ]
+        : []),
+      ...createRelAttribs,
+    ],
+    [createRelAttribs, secondaryConnection],
+  );
+
+  const rowClassRules = React.useMemo(
+    () => createConnectionRowClassRules<RelationshipMeta>(Boolean(secondaryConnection)),
+    [secondaryConnection],
   );
 
   function relsSelected(event: SelectionChangedEvent<RelationshipMeta>): void {
@@ -120,6 +150,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        rowClassRules={rowClassRules}
         rowSelection={rowSelection}
         onSelectionChanged={relsSelected}
         getRowId={(params) => params.data?.relationshipName ?? ""}

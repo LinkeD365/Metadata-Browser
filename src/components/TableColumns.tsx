@@ -7,6 +7,7 @@ import { Spinner, TableRowId, Tooltip, tokens } from "@fluentui/react-components
 import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 import {
   AppsRegular,
   CalendarLtrRegular,
@@ -29,7 +30,8 @@ import {
 import { ColumnMeta } from "../model/columnMeta";
 
 interface TableColumnsProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
+  primary: ToolBoxAPI.DataverseConnection | null;
+  secondary: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
   viewModel: ViewModel;
@@ -39,7 +41,7 @@ interface TableColumnsProps {
 }
 
 export const TableColumns = observer((props: TableColumnsProps): React.JSX.Element => {
-  const { connection, dvService, onLog, viewModel, table, showNotification } = props;
+  const { primary, secondary, dvService, onLog, viewModel, table, showNotification } = props;
 
   const getDataTypeIcon = React.useCallback((dataType: string): React.JSX.Element => {
     const normalizedType = dataType.trim().toLowerCase();
@@ -123,7 +125,10 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   }, [selectedTable.columnSearch, selectedTable.columns]);
 
   async function getColumnsMeta() {
-    if (!connection) {
+    const canLoadPrimary = Boolean(primary && selectedTable.hasPrimaryConnection);
+    const canLoadSecondary = Boolean(secondary && selectedTable.hasSecondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -132,15 +137,18 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     }
     try {
       setLoadingMeta(true);
-      await dvService
-        .getColumnsMeta(table)
-        .then((columns) => {
-          selectedTable.columns = columns;
-          onLog(`Loaded ${columns.length} columns for table: ${table}`, "success");
-        })
-        .catch((error: { message: any }) => {
-          throw new Error(error.message);
-        });
+      const [primaryColumns, secondaryColumns] = await Promise.all([
+        canLoadPrimary ? dvService.getColumnsMeta(table, "primary") : Promise.resolve([]),
+        canLoadSecondary ? dvService.getColumnsMeta(table, "secondary") : Promise.resolve([]),
+      ]);
+
+      selectedTable.columns = mergeConnectionComparisonRecords(
+        primaryColumns,
+        secondaryColumns,
+        (column) => column.columnName,
+        (column) => column.displayName,
+      );
+      onLog(`Loaded ${selectedTable.columns.length} columns for table: ${table}`, "success");
     } catch (error) {
       const errorMsg = `Error loading columns for table ${table}: ${(error as Error).message}`;
       onLog(errorMsg, "error");
@@ -172,6 +180,18 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   const colDefs = React.useMemo<ColDef<ColumnMeta>[]>(
     () => [
       { headerName: "Column Name", field: "displayName", sort: "asc" },
+      ...(secondary
+        ? [
+            {
+              headerName: secondary.name
+                ? `2nd Column Name (${secondary.name})`
+                : "2nd Column Name",
+              field: "secondaryDisplayName",
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } satisfies ColDef<ColumnMeta>,
+          ]
+        : []),
       { headerName: "Logical Name", field: "columnName" },
       {
         headerName: "Data Type",
@@ -208,7 +228,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
             }) as ColDef<ColumnMeta>,
         ),
     ],
-    [getDataTypeIcon, viewModel.columnAttributes],
+    [getDataTypeIcon, secondary, viewModel.columnAttributes],
   );
 
   function colsSelected(event: SelectionChangedEvent<ColumnMeta>): void {
@@ -221,6 +241,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
       mode: "multiRow",
     };
   }, []);
+  const rowClassRules = React.useMemo(() => createConnectionRowClassRules<ColumnMeta>(Boolean(secondary)), [secondary]);
   const tableColumnGrid = (
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<ColumnMeta>
@@ -230,6 +251,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         defaultColDef={defaultColDefs}
         domLayout="normal"
         rowSelection={rowSelection}
+        rowClassRules={rowClassRules}
         onSelectionChanged={colsSelected}
         getRowId={(params) => params.data?.columnName ?? ""}
         enableCellTextSelection={true}

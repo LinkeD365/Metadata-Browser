@@ -7,7 +7,10 @@ import { BusinessRuleMeta } from "./businessRule";
 
 export class TableMeta {
   tableName: string;
-  displayName: string;
+  primaryDisplayName: string;
+  secondaryDisplayName?: string;
+  hasPrimaryConnection: boolean;
+  hasSecondaryConnection: boolean;
   metaId: string;
 
   columns: ColumnMeta[] = [];
@@ -31,7 +34,9 @@ export class TableMeta {
 
   constructor() {
     this.tableName = "";
-    this.displayName = "";
+    this.primaryDisplayName = "";
+    this.hasPrimaryConnection = false;
+    this.hasSecondaryConnection = false;
     this.metaId = "";
 
     makeAutoObservable(this);
@@ -50,11 +55,16 @@ export class Attribute {
 
 export class KeyMeta {
   keyName: string;
+  secondaryDisplayName?: string;
+  hasPrimaryConnection: boolean;
+  hasSecondaryConnection: boolean;
 
   attributes: Attribute[] = [];
 
   constructor() {
     this.keyName = "";
+    this.hasPrimaryConnection = false;
+    this.hasSecondaryConnection = false;
     makeAutoObservable(this);
   }
 }
@@ -62,11 +72,16 @@ export class KeyMeta {
 export class RelationshipMeta {
   relationshipName: string;
   type: string;
+  secondaryDisplayName?: string;
+  hasPrimaryConnection: boolean;
+  hasSecondaryConnection: boolean;
   attributes: Attribute[] = [];
 
   constructor() {
     this.relationshipName = "";
     this.type = "";
+    this.hasPrimaryConnection = false;
+    this.hasSecondaryConnection = false;
     makeAutoObservable(this);
   }
 }
@@ -84,10 +99,15 @@ export class RelationshipAttribute {
 
 export class PrivilegeMeta {
   privilegeName: string;
+  secondaryDisplayName?: string;
+  hasPrimaryConnection: boolean;
+  hasSecondaryConnection: boolean;
   attributes: Attribute[] = [];
 
   constructor() {
     this.privilegeName = "";
+    this.hasPrimaryConnection = false;
+    this.hasSecondaryConnection = false;
     makeAutoObservable(this);
   }
 }

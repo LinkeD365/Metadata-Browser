@@ -24,7 +24,7 @@ export class ExcelExport {
     const ExcelJS = (excelModule as any).default ?? excelModule;
 
     for (const table of tables) {
-      console.log(`Exporting table: ${table.displayName}`);
+      console.log(`Exporting table: ${table.primaryDisplayName}`);
 
       const workbook = new ExcelJS.Workbook();
 
@@ -38,7 +38,7 @@ export class ExcelExport {
       if (this.vm.excelOptions.includeRelationships) await this.addRelationshipsSheet(workbook, table);
       if (this.vm.excelOptions.includeSolutions) await this.addSolutionsSheet(workbook, table);
 
-      const fileName = `${table.displayName}.xlsx`;
+      const fileName = `${table.primaryDisplayName}.xlsx`;
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -70,7 +70,7 @@ export class ExcelExport {
   private addTableDetailsSheet(workbook: any, table: TableMeta): void {
     const sheet = workbook.addWorksheet("Table Details");
     sheet.addRow(["Table Name", table.tableName]);
-    sheet.addRow(["Display Name", table.displayName]);
+    sheet.addRow(["Display Name", table.primaryDisplayName]);
     table.attributes.map((attr) => {
       sheet.addRow([attr.attributeName, attr.attributeValue]);
     });

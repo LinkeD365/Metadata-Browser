@@ -7,9 +7,11 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 
 interface KeysProps {
   connection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -18,7 +20,7 @@ interface KeysProps {
 }
 
 export const Keys = observer((props: KeysProps): React.JSX.Element => {
-  const { connection, dvService, onLog, selectedTable, showNotification } = props;
+  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
@@ -30,7 +32,10 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   }, [selectedTable]);
 
   async function getKeysMeta() {
-    if (!connection) {
+    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -38,16 +43,18 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
     console.log("Fetching keys metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
-    await dvService
-      .getKeysMeta(selectedTable)
-      .then((keys) => {
-        console.log("Keys metadata loaded: ", keys);
-        selectedTable.keys = keys;
-        onLog(`Loaded ${keys.length} keys for table: ${selectedTable.tableName}`, "success");
-      })
-      .catch((error: { message: any }) => {
-        onLog(`Error loading keys for table ${selectedTable.tableName}: ${error.message}`, "error");
-      });
+    const [primaryKeys, secondaryKeys] = await Promise.all([
+      canLoadPrimary ? dvService.getKeysMeta(selectedTable, "primary") : Promise.resolve([]),
+      canLoadSecondary ? dvService.getKeysMeta(selectedTable, "secondary") : Promise.resolve([]),
+    ]);
+
+    selectedTable.keys = mergeConnectionComparisonRecords(
+      primaryKeys,
+      secondaryKeys,
+      (keyMeta) => keyMeta.keyName,
+      (keyMeta) => keyMeta.keyName,
+    );
+    onLog(`Loaded ${selectedTable.keys.length} keys for table: ${selectedTable.tableName}`, "success");
     setLoadingMeta(false);
     return;
   }
@@ -80,9 +87,27 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
   }, [selectedTable.keys.length]);
 
   const colDefs = React.useMemo<ColDef<KeyMeta>[]>(
-    () => [{ headerName: "Key Name", field: "keyName", flex: 2, sort: "asc" }, ...createKeyAttr],
+    () => [
+      { headerName: "Key Name", field: "keyName", flex: 2, sort: "asc" },
+      ...(secondaryConnection
+        ? [
+            {
+              headerName: secondaryConnection.name ? `2nd Key Name (${secondaryConnection.name})` : "2nd Key Name",
+              field: "secondaryDisplayName",
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } as ColDef<KeyMeta>,
+          ]
+        : []),
+      ...createKeyAttr,
+    ],
 
-    [createKeyAttr],
+    [createKeyAttr, secondaryConnection],
+  );
+
+  const rowClassRules = React.useMemo(
+    () => createConnectionRowClassRules<KeyMeta>(Boolean(secondaryConnection)),
+    [secondaryConnection],
   );
 
   const keyColumnGrid = (
@@ -93,6 +118,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        rowClassRules={rowClassRules}
         getRowId={(params) => params.data?.keyName ?? ""}
         enableCellTextSelection={true}
       />

@@ -7,9 +7,11 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 
 interface PrivilegesProps {
   connection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -18,7 +20,7 @@ interface PrivilegesProps {
 }
 
 export const Privileges = observer((props: PrivilegesProps): React.JSX.Element => {
-  const { connection, dvService, onLog, selectedTable, showNotification } = props;
+  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
@@ -30,7 +32,10 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   }, [selectedTable]);
 
   async function getPrivileges() {
-    if (!connection) {
+    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -38,16 +43,18 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
     console.log("Fetching privileges metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
-    await dvService
-      .getPrivilegesMetadata(selectedTable)
-      .then((privileges) => {
-        console.log("Privileges metadata loaded: ", privileges);
-        selectedTable.privileges = privileges;
-        onLog(`Loaded ${privileges.length} privileges for table: ${selectedTable.tableName}`, "success");
-      })
-      .catch((error: { message: any }) => {
-        onLog(`Error loading privileges for table ${selectedTable.tableName}: ${error.message}`, "error");
-      });
+    const [primaryPrivileges, secondaryPrivileges] = await Promise.all([
+      canLoadPrimary ? dvService.getPrivilegesMetadata(selectedTable, "primary") : Promise.resolve([]),
+      canLoadSecondary ? dvService.getPrivilegesMetadata(selectedTable, "secondary") : Promise.resolve([]),
+    ]);
+
+    selectedTable.privileges = mergeConnectionComparisonRecords(
+      primaryPrivileges,
+      secondaryPrivileges,
+      (privilege) => privilege.privilegeName,
+      (privilege) => privilege.privilegeName,
+    );
+    onLog(`Loaded ${selectedTable.privileges.length} privileges for table: ${selectedTable.tableName}`, "success");
     setLoadingMeta(false);
     return;
   }
@@ -80,9 +87,29 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   }, [selectedTable.privileges.length]);
 
   const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
-    () => [{ headerName: "Privilege Name", field: "privilegeName", flex: 2, sort: "asc" }, ...createPrivilegeAttr],
+    () => [
+      { headerName: "Privilege Name", field: "privilegeName", flex: 2, sort: "asc" },
+      ...(secondaryConnection
+        ? [
+            {
+              headerName: secondaryConnection.name
+                ? `2nd Privilege Name (${secondaryConnection.name})`
+                : "2nd Privilege Name",
+              field: "secondaryDisplayName",
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } as ColDef<PrivilegeMeta>,
+          ]
+        : []),
+      ...createPrivilegeAttr,
+    ],
 
-    [createPrivilegeAttr],
+    [createPrivilegeAttr, secondaryConnection],
+  );
+
+  const rowClassRules = React.useMemo(
+    () => createConnectionRowClassRules<PrivilegeMeta>(Boolean(secondaryConnection)),
+    [secondaryConnection],
   );
 
   const privilegesGrid = (
@@ -93,6 +120,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        rowClassRules={rowClassRules}
         getRowId={(params) => params.data?.privilegeName ?? ""}
         enableCellTextSelection={true}
       />
