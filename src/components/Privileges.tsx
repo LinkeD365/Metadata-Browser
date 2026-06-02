@@ -4,7 +4,7 @@ import { dvService } from "../utils/dataverse";
 import { PrivilegeMeta, TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
 
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
@@ -88,7 +88,14 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
 
   const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
     () => [
-      { headerName: "Privilege Name", field: "privilegeName", flex: 2, sort: "asc" },
+      {
+        headerName: "Privilege Name",
+        field: "privilegeName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.privilegeName ?? ""),
+      },
       ...(secondaryConnection
         ? [
             {
@@ -116,6 +123,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<PrivilegeMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={selectedTable.privileges}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

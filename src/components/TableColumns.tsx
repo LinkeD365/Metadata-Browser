@@ -4,7 +4,7 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner, TableRowId, Tooltip, tokens } from "@fluentui/react-components";
-import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-community";
+import { ColDef, SelectionChangedEvent, RowSelectionOptions, RowStyleModule } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
@@ -179,7 +179,13 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
 
   const colDefs = React.useMemo<ColDef<ColumnMeta>[]>(
     () => [
-      { headerName: "Column Name", field: "displayName", sort: "asc" },
+      {
+        headerName: "Column Name",
+        field: "displayName",
+        sort: "asc",
+        valueGetter: (params) =>
+          secondary && !params.data?.hasPrimaryConnection ? "" : (params.data?.displayName ?? ""),
+      },
       ...(secondary
         ? [
             {
@@ -246,6 +252,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<ColumnMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={filteredColumns}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

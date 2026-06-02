@@ -39,7 +39,7 @@ import { ViewModel } from "../model/ViewModel";
 import { dvService as DataverseService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { TableDetails } from "./TableDetail";
-import { ColumnEditRegular, OpenRegular, TextboxMoreRegular } from "@fluentui/react-icons";
+import { ColumnEditRegular, DismissRegular, OpenRegular, TextboxMoreRegular } from "@fluentui/react-icons";
 import { ExportPopover } from "./ExportPopover";
 import { TableColumnDrawer } from "./TableColumnDrawer";
 import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
@@ -378,6 +378,16 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     [vm, onLog],
   );
 
+  const closeTab = useCallback(
+    (tableName: string) => {
+      vm.selectedTables = (vm.selectedTables ?? []).filter((t) => t.tableName !== tableName);
+      if (selectedTab === tableName) {
+        setSelectedTab("tables");
+      }
+    },
+    [vm, selectedTab],
+  );
+
   const tableTabs =
     vm.selectedTables && vm.selectedTables.length > 0 ? (
       (vm.selectedTables ?? []).map((t) => (
@@ -390,6 +400,18 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
               iconFontSize: 12,
               stopPropagation: true,
             })}
+            <Tooltip content={`Close ${t.primaryDisplayName} tab`} relationship="label">
+              <Button
+                aria-label={`Close ${t.primaryDisplayName} tab`}
+                icon={<DismissRegular fontSize={12} />}
+                size="small"
+                appearance="subtle"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  closeTab(t.tableName);
+                }}
+              />
+            </Tooltip>
           </span>
         </Tab>
       ))

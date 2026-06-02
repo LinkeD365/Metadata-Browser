@@ -4,7 +4,7 @@ import { dvService } from "../utils/dataverse";
 import { KeyMeta, TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
 
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
@@ -88,7 +88,14 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
 
   const colDefs = React.useMemo<ColDef<KeyMeta>[]>(
     () => [
-      { headerName: "Key Name", field: "keyName", flex: 2, sort: "asc" },
+      {
+        headerName: "Key Name",
+        field: "keyName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.keyName ?? ""),
+      },
       ...(secondaryConnection
         ? [
             {
@@ -114,6 +121,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<KeyMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={selectedTable.keys}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

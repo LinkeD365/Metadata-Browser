@@ -3,7 +3,7 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { BusinessRuleMeta } from "../model/businessRule";
@@ -84,7 +84,14 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
 
   const colDefs = React.useMemo<ColDef<BusinessRuleMeta>[]>(
     () => [
-      { headerName: "Name", field: "ruleName", flex: 2, sort: "asc" },
+      {
+        headerName: "Name",
+        field: "ruleName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.ruleName ?? ""),
+      },
       ...(secondaryConnection
         ? [
             {
@@ -124,6 +131,7 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<BusinessRuleMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={filteredRules}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

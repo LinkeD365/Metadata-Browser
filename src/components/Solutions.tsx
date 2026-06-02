@@ -3,7 +3,7 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { Solution } from "../model/solution";
@@ -72,7 +72,14 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
 
   const colDefs = React.useMemo<ColDef<Solution>[]>(
     () => [
-      { headerName: "Name", field: "solutionName", flex: 2, sort: "asc" },
+      {
+        headerName: "Name",
+        field: "solutionName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.solutionName ?? ""),
+      },
       ...(secondaryConnection
         ? [
             {
@@ -110,6 +117,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<Solution>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={selectedTable.solutions}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

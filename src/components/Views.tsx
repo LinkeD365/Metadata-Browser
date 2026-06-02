@@ -3,7 +3,7 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { ViewMeta } from "../model/view";
@@ -80,7 +80,14 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
 
   const colDefs = React.useMemo<ColDef<ViewMeta>[]>(
     () => [
-      { headerName: "Name", field: "viewName", flex: 2, sort: "asc" },
+      {
+        headerName: "Name",
+        field: "viewName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.viewName ?? ""),
+      },
       ...(secondaryConnection
         ? [
             {
@@ -121,6 +128,7 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<ViewMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={filteredViews}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}

@@ -4,7 +4,7 @@ import { dvService } from "../utils/dataverse";
 import { RelationshipMeta, TableMeta } from "../model/tableMeta";
 import { Spinner, TableRowId } from "@fluentui/react-components";
 
-import { ColDef, SelectionChangedEvent, RowSelectionOptions } from "ag-grid-community";
+import { ColDef, SelectionChangedEvent, RowSelectionOptions, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { ViewModel } from "../model/ViewModel";
@@ -109,7 +109,14 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
 
   const colDefs = React.useMemo<ColDef<RelationshipMeta>[]>(
     () => [
-      { headerName: "Relationship Name", field: "relationshipName", flex: 2, sort: "asc" },
+      {
+        headerName: "Relationship Name",
+        field: "relationshipName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.relationshipName ?? ""),
+      },
       ...(secondaryConnection
         ? [
             {
@@ -146,6 +153,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<RelationshipMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={filteredRelationships.filter((r) => r.type === type)}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
