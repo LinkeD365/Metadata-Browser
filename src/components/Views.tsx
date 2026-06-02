@@ -62,6 +62,7 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
       secondaryViews,
       (view) => `${view.type}:${view.viewName}`,
       (view) => view.viewName,
+      ["viewName"],
     );
     onLog(`Loaded ${selectedTable.views.length} views for table: ${selectedTable.tableName}`, "success");
     setLoadingMeta(false);

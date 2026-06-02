@@ -63,6 +63,7 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
       secondaryRules,
       (rule) => rule.ruleName,
       (rule) => rule.ruleName,
+      ["ruleName"],
     );
     onLog(
       `Loaded ${selectedTable.businessRules.length} business rules for table: ${selectedTable.tableName}`,

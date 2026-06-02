@@ -147,6 +147,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         secondaryColumns,
         (column) => column.columnName,
         (column) => column.displayName,
+        ["displayName"],
       );
       onLog(`Loaded ${selectedTable.columns.length} columns for table: ${table}`, "success");
     } catch (error) {

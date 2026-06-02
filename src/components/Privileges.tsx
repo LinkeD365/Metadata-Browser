@@ -53,6 +53,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
       secondaryPrivileges,
       (privilege) => privilege.privilegeName,
       (privilege) => privilege.privilegeName,
+      ["privilegeName"],
     );
     onLog(`Loaded ${selectedTable.privileges.length} privileges for table: ${selectedTable.tableName}`, "success");
     setLoadingMeta(false);

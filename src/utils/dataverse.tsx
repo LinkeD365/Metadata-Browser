@@ -22,8 +22,8 @@ export class dvService {
   secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvApi: DataverseAPI.API;
   onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
-  private cachedEnvironmentId: string | null = null;
-  private environmentIdRequest: Promise<string> | null = null;
+  private cachedEnvironmentIds = new Map<"primary" | "secondary", string>();
+  private environmentIdRequests = new Map<"primary" | "secondary", Promise<string>>();
 
   constructor(props: dvServiceProps) {
     this.primaryConnection = props.primaryConnection;
@@ -50,18 +50,20 @@ export class dvService {
       throw new Error("No connection available");
     }
 
-    if (this.cachedEnvironmentId) {
-      return this.cachedEnvironmentId;
+    const cachedEnvironmentId = this.cachedEnvironmentIds.get(connectionTarget);
+    if (cachedEnvironmentId) {
+      return cachedEnvironmentId;
     }
 
-    if (this.environmentIdRequest) {
-      return this.environmentIdRequest;
+    const inFlightRequest = this.environmentIdRequests.get(connectionTarget);
+    if (inFlightRequest) {
+      return inFlightRequest;
     }
 
     const requestPath =
       "RetrieveCurrentOrganization(AccessType=@p1)?@p1=Microsoft.Dynamics.CRM.EndpointAccessType'Default'";
 
-    this.environmentIdRequest = this.queryData(requestPath, connectionTarget)
+    const environmentIdRequest = this.queryData(requestPath, connectionTarget)
       .then((response) => {
         const environmentId = (response as RetrieveCurrentOrganizationResponse)?.Detail?.EnvironmentId?.trim();
 
@@ -69,14 +71,15 @@ export class dvService {
           throw new Error("RetrieveCurrentOrganization did not return an environment ID");
         }
 
-        this.cachedEnvironmentId = environmentId;
+        this.cachedEnvironmentIds.set(connectionTarget, environmentId);
         return environmentId;
       })
       .finally(() => {
-        this.environmentIdRequest = null;
+        this.environmentIdRequests.delete(connectionTarget);
       });
 
-    return this.environmentIdRequest;
+    this.environmentIdRequests.set(connectionTarget, environmentIdRequest);
+    return environmentIdRequest;
   }
 
   async getTableBrowserUrl(

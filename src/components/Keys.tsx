@@ -53,6 +53,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
       secondaryKeys,
       (keyMeta) => keyMeta.keyName,
       (keyMeta) => keyMeta.keyName,
+      ["keyName"],
     );
     onLog(`Loaded ${selectedTable.keys.length} keys for table: ${selectedTable.tableName}`, "success");
     setLoadingMeta(false);

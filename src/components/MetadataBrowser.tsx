@@ -108,6 +108,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       secondaryTables,
       (table) => table.tableName,
       (table) => table.primaryDisplayName,
+      ["primaryDisplayName"],
     );
   }, []);
 
@@ -493,7 +494,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         field: "primaryDisplayName",
         flex: 2,
         sort: "asc",
-        //valueGetter: (params) => (params.data?.hasPrimaryConnection ? params.data.primaryDisplayName : ""),
       },
       ...(secondaryConnection
         ? [

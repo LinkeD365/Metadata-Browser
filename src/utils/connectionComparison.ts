@@ -9,6 +9,7 @@ export function mergeConnectionComparisonRecords<T extends ConnectionComparisonR
   secondaryRecords: T[],
   getKey: (record: T) => string,
   getDisplayName: (record: T) => string,
+  primaryDisplayFieldsToClear: string[] = [],
 ): T[] {
   const mergedRecords = new Map<string, T>();
 
@@ -27,10 +28,18 @@ export function mergeConnectionComparisonRecords<T extends ConnectionComparisonR
       return;
     }
 
-    record.hasPrimaryConnection = false;
-    record.hasSecondaryConnection = true;
-    record.secondaryDisplayName = getDisplayName(record);
-    mergedRecords.set(getKey(record), record);
+    const secondaryOnlyRecord = { ...record } as T;
+    const secondaryOnlyRecordFields = secondaryOnlyRecord as Record<string, unknown>;
+    primaryDisplayFieldsToClear.forEach((fieldName) => {
+      if (typeof secondaryOnlyRecordFields[fieldName] === "string") {
+        secondaryOnlyRecordFields[fieldName] = "";
+      }
+    });
+
+    secondaryOnlyRecord.hasPrimaryConnection = false;
+    secondaryOnlyRecord.hasSecondaryConnection = true;
+    secondaryOnlyRecord.secondaryDisplayName = getDisplayName(record);
+    mergedRecords.set(getKey(record), secondaryOnlyRecord as T);
   });
 
   return Array.from(mergedRecords.values());

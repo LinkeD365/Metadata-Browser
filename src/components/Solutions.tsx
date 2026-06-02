@@ -53,6 +53,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       secondarySolutions,
       (solution) => solution.uniqueName,
       (solution) => solution.solutionName,
+      ["solutionName"],
     );
     onLog(`Loaded ${selectedTable.solutions.length} solutions for table: ${selectedTable.tableName}`, "success");
     setLoadingMeta(false);

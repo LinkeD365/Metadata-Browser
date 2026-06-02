@@ -70,6 +70,7 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
       secondaryFlows,
       (flow) => flow.flowName,
       (flow) => flow.flowName,
+      ["flowName"],
     );
     onLog(
       `Loaded ${selectedTable.businessProcessFlows.length} business process flows for table: ${selectedTable.tableName}`,

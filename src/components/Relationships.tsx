@@ -55,6 +55,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
       secondaryRelationships,
       (relationship) => relationship.relationshipName,
       (relationship) => relationship.relationshipName,
+      ["relationshipName"],
     );
     onLog(
       `Loaded ${selectedTable.relationships.length} relationships for table: ${selectedTable.tableName}`,
