@@ -3,13 +3,15 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { BusinessRuleMeta } from "../model/businessRule";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 
 interface BusinessRulesProps {
   connection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -19,7 +21,8 @@ interface BusinessRulesProps {
 }
 
 export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Element => {
-  const { connection, dvService, onLog, selectedTable, showNotification, businessRuleAttributes } = props;
+  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification, businessRuleAttributes } =
+    props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   const filteredRules = React.useMemo(() => {
@@ -41,21 +44,31 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
   }, [selectedTable]);
 
   async function getBusinessRules() {
-    if (!connection) {
+    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
     setLoadingMeta(true);
-    await dvService
-      .getBusinessRulesForTable(selectedTable)
-      .then((rules) => {
-        selectedTable.businessRules = rules;
-        onLog(`Loaded ${rules.length} business rules for table: ${selectedTable.tableName}`, "success");
-      })
-      .catch((error: { message: any }) => {
-        onLog(`Error loading business rules for table ${selectedTable.tableName}: ${error.message}`, "error");
-      });
+    const [primaryRules, secondaryRules] = await Promise.all([
+      canLoadPrimary ? dvService.getBusinessRulesForTable(selectedTable, "primary") : Promise.resolve([]),
+      canLoadSecondary ? dvService.getBusinessRulesForTable(selectedTable, "secondary") : Promise.resolve([]),
+    ]);
+
+    selectedTable.businessRules = mergeConnectionComparisonRecords(
+      primaryRules,
+      secondaryRules,
+      (rule) => rule.ruleName,
+      (rule) => rule.ruleName,
+      ["ruleName"],
+    );
+    onLog(
+      `Loaded ${selectedTable.businessRules.length} business rules for table: ${selectedTable.tableName}`,
+      "success",
+    );
     setLoadingMeta(false);
   }
 
@@ -72,7 +85,24 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
 
   const colDefs = React.useMemo<ColDef<BusinessRuleMeta>[]>(
     () => [
-      { headerName: "Name", field: "ruleName", flex: 2, sort: "asc" },
+      {
+        headerName: "Name",
+        field: "ruleName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.ruleName ?? ""),
+      },
+      ...(secondaryConnection
+        ? [
+            {
+              headerName: secondaryConnection.name ? `2nd Name (${secondaryConnection.name})` : "2nd Name",
+              field: "secondaryDisplayName",
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } as ColDef<BusinessRuleMeta>,
+          ]
+        : []),
       { headerName: "Type", field: "type" },
       ...businessRuleAttributes.map(
         (attrName) =>
@@ -85,7 +115,12 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
           }) as ColDef<BusinessRuleMeta>,
       ),
     ],
-    [businessRuleAttributes],
+    [businessRuleAttributes, secondaryConnection],
+  );
+
+  const rowClassRules = React.useMemo(
+    () => createConnectionRowClassRules<BusinessRuleMeta>(Boolean(secondaryConnection)),
+    [secondaryConnection],
   );
 
   const getRuleRowId = React.useCallback((rule: BusinessRuleMeta) => {
@@ -97,10 +132,12 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<BusinessRuleMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={filteredRules}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        rowClassRules={rowClassRules}
         getRowId={(params) => (params.data ? getRuleRowId(params.data) : "")}
         enableCellTextSelection={true}
       />

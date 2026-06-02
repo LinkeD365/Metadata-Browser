@@ -24,8 +24,6 @@ export class ExcelExport {
     const ExcelJS = (excelModule as any).default ?? excelModule;
 
     for (const table of tables) {
-      console.log(`Exporting table: ${table.displayName}`);
-
       const workbook = new ExcelJS.Workbook();
 
       if (this.vm.excelOptions.includeTableDetails) {
@@ -38,7 +36,7 @@ export class ExcelExport {
       if (this.vm.excelOptions.includeRelationships) await this.addRelationshipsSheet(workbook, table);
       if (this.vm.excelOptions.includeSolutions) await this.addSolutionsSheet(workbook, table);
 
-      const fileName = `${table.displayName}.xlsx`;
+      const fileName = `${table.primaryDisplayName}.xlsx`;
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -48,9 +46,7 @@ export class ExcelExport {
   }
   async addKeysSheet(workbook: any, table: TableMeta) {
     const sheet = workbook.addWorksheet("Keys");
-    console.log("Adding keys for table:", table.keys.length);
     if (!table.keys || table.keys.length === 0) {
-      console.log("No keys found, fetching from dvService...");
       await this.dvsvc.getKeysMeta(table).then((keys) => {
         table.keys = keys;
       });
@@ -70,7 +66,7 @@ export class ExcelExport {
   private addTableDetailsSheet(workbook: any, table: TableMeta): void {
     const sheet = workbook.addWorksheet("Table Details");
     sheet.addRow(["Table Name", table.tableName]);
-    sheet.addRow(["Display Name", table.displayName]);
+    sheet.addRow(["Display Name", table.primaryDisplayName]);
     table.attributes.map((attr) => {
       sheet.addRow([attr.attributeName, attr.attributeValue]);
     });
@@ -80,14 +76,11 @@ export class ExcelExport {
 
   private async addColumnsSheet(workbook: any, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Columns");
-    console.log("Adding columns for table:", table.columns.length);
     if (!table.columns || table.columns.length === 0) {
-      console.log("No columns found, fetching from dvService...");
       await this.dvsvc.getColumnsMeta(table.tableName).then((columns) => {
         table.columns = columns;
       });
     }
-    console.log("Total columns to add:", table.columns.length);
     sheet.addRow(["Column Name", "Display Name", "Data Type", ...this.vm.columnAttributes.map((attr) => attr.name)]);
     table.columns.forEach((column) => {
       const rowData = [
@@ -106,9 +99,7 @@ export class ExcelExport {
 
   private async addPrivilegesSheet(workbook: any, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Privileges");
-    console.log("Adding privileges for table:", table.privileges.length);
     if (!table.privileges || table.privileges.length === 0) {
-      console.log("No privileges found, fetching from dvService...");
       await this.dvsvc.getPrivilegesMetadata(table).then((privileges) => {
         table.privileges = privileges;
       });
@@ -127,9 +118,7 @@ export class ExcelExport {
 
   private async addSolutionsSheet(workbook: any, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Solutions");
-    console.log("Adding solutions for table:", table.solutions.length);
     if (!table.solutions || table.solutions.length === 0) {
-      console.log("No solutions found, fetching from dvService...");
       await this.dvsvc.getSolutionsForTable(table).then((solutions) => {
         table.solutions = solutions;
       });
@@ -166,9 +155,7 @@ export class ExcelExport {
     const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
     for (const type of relTypes) {
       const sheet = workbook.addWorksheet(type);
-      console.log("Adding relationships for table:", table.relationships.length);
       if (!table.relationships || table.relationships.filter((r) => r.type === type).length === 0) {
-        console.log("No relationships found, fetching from dvService...");
         await this.dvsvc.getRelationshipsMeta(table, type).then((relationships) => {
           table.relationships.push(...relationships);
         });

@@ -9,6 +9,9 @@
     "url": "https://github.com/LinkeD365/Metadata-Browser",
     "type": "git"
   },
+  "features": {
+    "multiConnection": "optional"
+  },
   "homepage": "https://github.com/LinkeD365/Metadata-Browser#readme",
   "bugs": {
     "url": "https://github.com/LinkeD365/Metadata-Browser/issues"

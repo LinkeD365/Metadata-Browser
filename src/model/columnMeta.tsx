@@ -3,6 +3,9 @@ import { makeAutoObservable } from "mobx";
 export class ColumnMeta {
   columnName: string;
   displayName: string;
+  secondaryDisplayName?: string;
+  hasPrimaryConnection: boolean;
+  hasSecondaryConnection: boolean;
   dataType: string;
 
   attributes: ColumnAttribute[] = [];
@@ -10,6 +13,8 @@ export class ColumnMeta {
   constructor() {
     this.columnName = "";
     this.displayName = "";
+    this.hasPrimaryConnection = false;
+    this.hasSecondaryConnection = false;
     this.dataType = "";
     makeAutoObservable(this);
   }

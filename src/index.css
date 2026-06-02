@@ -340,6 +340,24 @@ body {
   }
 }
 
+body[data-ag-theme-mode="light"] .ag-row.table-row-primary-only .ag-cell {
+  background-color: rgba(255, 242, 204, 0.92) !important;
+}
+
+body[data-ag-theme-mode="light"] .ag-row.table-row-secondary-only .ag-cell {
+  background-color: rgba(221, 242, 255, 0.92) !important;
+}
+
+body[data-ag-theme-mode="dark"] .ag-row.table-row-primary-only .ag-cell {
+  background-color: rgba(153, 120, 25, 0.45) !important;
+  color: #f8f8f8;
+}
+
+body[data-ag-theme-mode="dark"] .ag-row.table-row-secondary-only .ag-cell {
+  background-color: rgba(31, 102, 146, 0.5) !important;
+  color: #f8f8f8;
+}
+
 .output::-webkit-scrollbar,
 .log::-webkit-scrollbar {
   width: 8px;

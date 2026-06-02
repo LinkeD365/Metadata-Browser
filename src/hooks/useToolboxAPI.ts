@@ -7,15 +7,18 @@ export type LogEntry = {
 };
 
 export function useConnection() {
-  const [connection, setConnection] = useState<ToolBoxAPI.DataverseConnection | null>(null);
+  const [primaryConnection, setPrimaryConnection] = useState<ToolBoxAPI.DataverseConnection | null>(null);
+  const [secondaryConnection, setSecondaryConnection] = useState<ToolBoxAPI.DataverseConnection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshConnection = useCallback(async () => {
     console.log("Refreshing active connection...");
     try {
-      const conn = await window.toolboxAPI.connections.getActiveConnection();
-      setConnection(conn);
-      console.log("Active connection refreshed:", conn);
+      const primaryConn = await window.toolboxAPI.connections.getActiveConnection();
+      const secondaryConn = await window.toolboxAPI.connections.getSecondaryConnection();
+      setPrimaryConnection(primaryConn);
+      setSecondaryConnection(secondaryConn);
+      console.log("Active connection refreshed:", primaryConn, secondaryConn);
     } catch (error) {
       console.error("Error refreshing connection:", error);
     } finally {
@@ -27,7 +30,7 @@ export function useConnection() {
     refreshConnection();
   }, [refreshConnection]);
 
-  return { connection, isLoading, refreshConnection };
+  return { primaryConnection, secondaryConnection, isLoading, refreshConnection };
 }
 
 export function useToolboxEvents(onEvent: (event: string, data: any) => void) {

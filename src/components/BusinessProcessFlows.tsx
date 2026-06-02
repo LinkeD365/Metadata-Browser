@@ -3,13 +3,15 @@ import { observer } from "mobx-react";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
 import { Spinner } from "@fluentui/react-components";
-import { ColDef } from "ag-grid-community";
+import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { BusinessProcessFlowMeta } from "../model/businessProcessFlow";
+import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
 
 interface BusinessProcessFlowsProps {
   connection: ToolBoxAPI.DataverseConnection | null;
+  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -19,7 +21,15 @@ interface BusinessProcessFlowsProps {
 }
 
 export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps): React.JSX.Element => {
-  const { connection, dvService, onLog, selectedTable, showNotification, businessProcessFlowAttributes } = props;
+  const {
+    connection,
+    secondaryConnection,
+    dvService,
+    onLog,
+    selectedTable,
+    showNotification,
+    businessProcessFlowAttributes,
+  } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   const filteredFlows = React.useMemo(() => {
@@ -41,21 +51,31 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
   }, [selectedTable]);
 
   async function getBusinessProcessFlows() {
-    if (!connection) {
+    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
     setLoadingMeta(true);
-    await dvService
-      .getBusinessProcessFlowsForTable(selectedTable)
-      .then((flows) => {
-        selectedTable.businessProcessFlows = flows;
-        onLog(`Loaded ${flows.length} business process flows for table: ${selectedTable.tableName}`, "success");
-      })
-      .catch((error: { message: any }) => {
-        onLog(`Error loading business process flows for table ${selectedTable.tableName}: ${error.message}`, "error");
-      });
+    const [primaryFlows, secondaryFlows] = await Promise.all([
+      canLoadPrimary ? dvService.getBusinessProcessFlowsForTable(selectedTable, "primary") : Promise.resolve([]),
+      canLoadSecondary ? dvService.getBusinessProcessFlowsForTable(selectedTable, "secondary") : Promise.resolve([]),
+    ]);
+
+    selectedTable.businessProcessFlows = mergeConnectionComparisonRecords(
+      primaryFlows,
+      secondaryFlows,
+      (flow) => flow.flowName,
+      (flow) => flow.flowName,
+      ["flowName"],
+    );
+    onLog(
+      `Loaded ${selectedTable.businessProcessFlows.length} business process flows for table: ${selectedTable.tableName}`,
+      "success",
+    );
     setLoadingMeta(false);
   }
 
@@ -72,7 +92,24 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
 
   const colDefs = React.useMemo<ColDef<BusinessProcessFlowMeta>[]>(
     () => [
-      { headerName: "Name", field: "flowName", flex: 2, sort: "asc" },
+      {
+        headerName: "Name",
+        field: "flowName",
+        flex: 2,
+        sort: "asc",
+        valueGetter: (params) =>
+          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.flowName ?? ""),
+      },
+      ...(secondaryConnection
+        ? [
+            {
+              headerName: secondaryConnection.name ? `2nd Name (${secondaryConnection.name})` : "2nd Name",
+              field: "secondaryDisplayName",
+              valueGetter: (params) =>
+                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
+            } as ColDef<BusinessProcessFlowMeta>,
+          ]
+        : []),
       { headerName: "Type", field: "type" },
       ...businessProcessFlowAttributes.map(
         (attrName) =>
@@ -85,7 +122,12 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
           }) as ColDef<BusinessProcessFlowMeta>,
       ),
     ],
-    [businessProcessFlowAttributes],
+    [businessProcessFlowAttributes, secondaryConnection],
+  );
+
+  const rowClassRules = React.useMemo(
+    () => createConnectionRowClassRules<BusinessProcessFlowMeta>(Boolean(secondaryConnection)),
+    [secondaryConnection],
   );
 
   const getFlowRowId = React.useCallback((flow: BusinessProcessFlowMeta) => {
@@ -97,10 +139,12 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
     <div style={{ width: "98vw", height: "85vh", alignSelf: "center" }}>
       <AgGridReact<BusinessProcessFlowMeta>
         theme={agGridTheme}
+        modules={[RowStyleModule]}
         rowData={filteredFlows}
         columnDefs={colDefs}
         defaultColDef={defaultColDefs}
         domLayout="normal"
+        rowClassRules={rowClassRules}
         getRowId={(params) => (params.data ? getFlowRowId(params.data) : "")}
         enableCellTextSelection={true}
       />
