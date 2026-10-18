@@ -11,7 +11,11 @@
     "type": "git"
   },
   "features": {
-    "multiConnection": "optional"
+    "connections": {
+      "min": 1,
+      "max": 2
+    },
+    "minAPI": "1.2.7"
   },
   "homepage": "https://github.com/LinkeD365/Metadata-Browser#readme",
   "bugs": {

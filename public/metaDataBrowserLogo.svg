@@ -1,0 +1,35 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round">
+
+  <!-- Dataverse / data store -->
+  <ellipse cx="25" cy="11" rx="14" ry="6"/>
+
+  <path d="M11 11v27c0 3.3 6.3 6 14 6"/>
+  <path d="M39 11v17"/>
+
+  <!-- Database section 1 -->
+  <path d="M11 20
+           c0 3.3 6.3 6 14 6
+           7.7 0 14-2.7 14-6"/>
+
+  <!-- Database section 2 -->
+  <path d="M11 29
+           c0 3.3 6.3 6 14 6
+           5.8 0 10.8-1.5 13-3.8"/>
+
+  <!-- Eye -->
+  <path d="M27 43
+           C33 34 42 31 50 34
+           C55 36 59 40 61 43
+           C58 48 52 53 44 53
+           C36 53 30 49 27 43Z"/>
+
+  <circle cx="44" cy="43" r="4"/>
+
+</svg>
