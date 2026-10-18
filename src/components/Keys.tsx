@@ -23,7 +23,6 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
 
   React.useEffect(() => {
     onLog(`Loading keys for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Keys component: ", selectedTable);
     if (selectedTable && selectedTable.keys?.length === 0) {
       getKeysMeta();
     }
@@ -35,7 +34,6 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
       return;
     }
 
-    console.log("Fetching keys metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
     await dvService

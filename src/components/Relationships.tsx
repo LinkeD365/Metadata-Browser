@@ -81,7 +81,6 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
     ) {
       return [];
     }
-    console.log("Creating relationship attributes for type: ", type, viewModel.relationshipAttributes);
     // const cols = selectedTable.Relationships.filter((r) => r.type === type)[0].attributes || [];
     return viewModel.relationshipAttributes
       .filter((attr) => attr.type === type)

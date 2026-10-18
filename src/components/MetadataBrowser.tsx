@@ -38,6 +38,7 @@ import { ColumnEditRegular, OpenRegular, TextboxMoreRegular } from "@fluentui/re
 import { ExportPopover } from "./ExportPopover";
 import { TableColumnDrawer } from "./TableColumnDrawer";
 import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
+import { mapWithConcurrency } from "../utils/mapWithConcurrency";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -93,6 +94,77 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     },
     [],
   );
+
+  const mergeTableMetadata = useCallback((primaryTables: TableMeta[], secondaryTables: TableMeta[]): TableMeta[] => {
+    return mergeConnectionComparisonRecords(
+      primaryTables,
+      secondaryTables,
+      (table) => table.tableName,
+      (table) => table.primaryDisplayName,
+      ["primaryDisplayName"],
+    );
+  }, []);
+
+  const getMergedAllTables = useCallback(async (): Promise<TableMeta[]> => {
+    const canLoadPrimary = Boolean(primaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
+      throw new Error("No connection available");
+    }
+
+    const [primaryTables, secondaryTables] = await Promise.all([
+      canLoadPrimary ? dvService.getAllTables(true) : Promise.resolve([]),
+      canLoadSecondary ? dvService.getAllTables(false) : Promise.resolve([]),
+    ]);
+
+    return mergeTableMetadata(primaryTables, secondaryTables);
+  }, [dvService, mergeTableMetadata, primaryConnection, secondaryConnection]);
+
+  const getMergedSolutionTables = useCallback(async (): Promise<TableMeta[]> => {
+    if (!vm.selectedSolution) {
+      return [];
+    }
+
+    const canLoadPrimary = Boolean(primaryConnection);
+    const canLoadSecondary = Boolean(secondaryConnection);
+
+    if (!canLoadPrimary && !canLoadSecondary) {
+      throw new Error("No connection available");
+    }
+
+    if (canLoadPrimary) {
+      const primaryTables = await dvService.getSolutionTables(vm.selectedSolution.uniqueName, "primary");
+
+      if (!canLoadSecondary) {
+        return mergeTableMetadata(primaryTables, []);
+      }
+
+      const secondaryLookups = await mapWithConcurrency(
+        primaryTables,
+        5,
+        (primaryTable) =>
+          dvService.getTableByLogicalName(primaryTable.tableName, "secondary").catch(() => null),
+      );
+      const secondaryTables = secondaryLookups.filter((table): table is TableMeta => Boolean(table));
+
+      return mergeTableMetadata(primaryTables, secondaryTables);
+    }
+
+    const secondaryTables = canLoadSecondary
+      ? await dvService
+          .getSolutionTables(vm.selectedSolution.uniqueName, "secondary")
+          .catch((error: { message?: string }) => {
+            onLog(
+              `Unable to load solution tables from secondary connection for ${vm.selectedSolution?.solutionName}: ${error.message ?? "Unknown error"}`,
+              "warning",
+            );
+            return [];
+          })
+      : [];
+
+    return mergeTableMetadata([], secondaryTables);
+  }, [dvService, mergeTableMetadata, onLog, primaryConnection, secondaryConnection, vm.selectedSolution]);
 
   const openTableInConnectionBrowser = useCallback(
     async (table: TableMeta) => {
@@ -219,7 +291,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   function tableSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     //setTableQuery(data.value ?? "");
-    console.log("Table search input: ", tableQuery);
     debouncedTableSearch(data.value ?? "");
   }
 
@@ -247,7 +318,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     ]);
     const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
-    console.log("CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile("tables_metadata.csv", csvString);
   }
 
@@ -286,7 +356,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   const handleRowDoubleClick = React.useCallback(
     (item: TableMeta) => {
-      console.log("Row double clicked: ", item);
       if (!vm.selectedTables) {
         vm.selectedTables = [];
       }

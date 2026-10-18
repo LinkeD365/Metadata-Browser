@@ -23,7 +23,6 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
 
   React.useEffect(() => {
     onLog(`Loading solutions for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Solutions component: ", selectedTable);
     if (selectedTable && selectedTable.solutions?.length === 0) {
       getSolutions();
     }
@@ -35,7 +34,6 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       return;
     }
 
-    console.log("Fetching solutions metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
     await dvService

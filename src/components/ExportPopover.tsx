@@ -17,6 +17,7 @@ import {
 } from "@fluentui/react-components";
 import { ArrowExportUpRegular, Dismiss24Regular, Save16Filled } from "@fluentui/react-icons";
 import { ExcelExport } from "../utils/excelExport";
+import { runExcelExport } from "../utils/runExcelExport";
 
 interface ExportPopoverProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -35,22 +36,34 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
   const saveSettingsButtonLabel = "Save export settings as default";
 
   async function exportToExcel(): Promise<void> {
-    console.log("Exporting to Excel...", vm.selectedTables);
-    if (!vm.selectedTables || vm.selectedTables.length == 0) {
+    if (!vm.selectedTables?.length) {
       onLog("No tables selected for export.", "warning");
-      window.toolboxAPI.utils.showNotification({
+      await window.toolboxAPI.utils.showNotification({
         title: "Metadata Browser",
         body: "No tables selected for export.",
         type: "info",
       });
+      return;
     }
+
     setBlockClose(true);
-    var excelExporter = new ExcelExport({ dvsvc: dvSvc, connection: connection, vm: vm });
-    console.log("Starting export...");
-    await excelExporter.export(vm.selectedTables);
-    setBlockClose(false);
-    setIsExportOpen(false);
-    return;
+    try {
+      const excelExporter = new ExcelExport({ dvsvc: dvSvc, connection, vm });
+      const succeeded = await runExcelExport(vm.selectedTables, (tables) => excelExporter.export(tables), async (error) => {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        onLog(`Excel export failed: ${message}`, "error");
+        await window.toolboxAPI.utils.showNotification({
+          title: "Export Failed",
+          body: "Failed to export selected metadata to Excel. Check the tool log for details.",
+          type: "error",
+        });
+      });
+      if (succeeded) {
+        setIsExportOpen(false);
+      }
+    } finally {
+      setBlockClose(false);
+    }
   }
 
   async function saveExportSettings(): Promise<void> {

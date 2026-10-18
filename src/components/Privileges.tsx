@@ -23,7 +23,6 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
 
   React.useEffect(() => {
     onLog(`Loading privileges for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Privileges component: ", selectedTable);
     if (selectedTable && selectedTable.privileges?.length === 0) {
       getPrivileges();
     }
@@ -35,7 +34,6 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
       return;
     }
 
-    console.log("Fetching privileges metadata for table: ", selectedTable.tableName);
 
     setLoadingMeta(true);
     await dvService

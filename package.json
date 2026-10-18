@@ -3,11 +3,15 @@
   "version": "0.5.1",
   "displayName": "Metadata Browser",
   "description": "Dataverse Metadata browser",
+  "main": "index.html",
   "author": "LinkeD365",
-  "icon": "Linked365Logo.svg",
+  "icon": "metaDataBrowserLogo.svg",
   "repository": {
     "url": "https://github.com/LinkeD365/Metadata-Browser",
     "type": "git"
+  },
+  "features": {
+    "multiConnection": "optional"
   },
   "homepage": "https://github.com/LinkeD365/Metadata-Browser#readme",
   "bugs": {
@@ -17,26 +21,27 @@
     {
       "name": "LinkeD365",
       "url": "https://github.com/LinkeD365"
-    },
-    {
-      "name": "MsCRMTools",
-      "url": "https://github.com/MsCRMTools"
     }
   ],
   "license": "MIT",
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
   "configurations": {
     "repository": "https://github.com/LinkeD365/Metadata-Browser",
     "website": "https://linked365.blog",
     "readmeUrl": "https://raw.githubusercontent.com/LinkeD365/Metadata-Browser/refs/heads/master/README.md"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "build": "tsc && vite build",
     "dev": "vite",
     "preview": "vite preview",
     "watch": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "finalize-package": "npm shrinkwrap",
     "validate": "pptb-validate"
   },
@@ -45,7 +50,7 @@
     "@fluentui/react-icons": "^2.0.315",
     "ag-grid-community": "^35.0.0",
     "ag-grid-react": "^35.0.0",
-    "exceljs": "^3.4.0",
+    "exceljs": "^4.4.0",
     "mobx": "^6.15.0",
     "mobx-react": "^9.2.1",
     "react": "^18.3.1",
@@ -53,15 +58,17 @@
     "react-json-pretty": "^2.2.0"
   },
   "devDependencies": {
-    "@pptb/types": "^1.2.1",
+    "@pptb/types": "^1.2.7",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.6.3",
-    "vite": "^7.1.11"
+    "vite": "^7.1.11",
+    "vitest": "^5.0.5"
   },
   "files": [
     "dist",
-    "npm-shrinkwrap.json"
+    "npm-shrinkwrap.json",
+    "IMPLEMENTATION.MD"
   ]
 }

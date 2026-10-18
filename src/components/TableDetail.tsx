@@ -391,7 +391,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
   function saveColumnAttributes(): void {
     const customCols = JSON.stringify(viewModel.columnAttributes.filter((attr) => attr.custom));
-    console.log("Custom Columns to retain: ", customCols);
     viewModel.columnAttributes = selectedColumnAttributes
       .map((id) => ({ name: id.toString(), custom: false }))
       .concat(JSON.parse(customCols));
@@ -539,8 +538,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     const headers = ["Attribute Name", "Value"];
     const rows = selTable.attributes.map((attr) => [attr.attributeName, attr.attributeValue]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Attributes CSV Data:\n", csvString);
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.displayName}_metadata.csv`, csvString);
+    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_metadata.csv`, csvString);
   }
 
   function exportColumnsClick(): void {
@@ -560,8 +558,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       }),
     ]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Attributes CSV Data:\n", csvString);
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.displayName}_columns_metadata.csv`, csvString);
+    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_columns_metadata.csv`, csvString);
   }
 
   async function openTableSectionInBrowser(pathSuffix: string, sectionName: string): Promise<void> {
@@ -605,8 +602,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     ]);
     const rows = data;
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Solutions CSV Data:\n", csvString);
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.displayName}_solutions_metadata.csv`, csvString);
+    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_solutions_metadata.csv`, csvString);
   }
 
   function exportPrivilegesClick(): void {
@@ -615,8 +611,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     const data = selTable.privileges;
     const rows = data.map((priv) => [priv.privilegeName, ...priv.attributes.map((attr) => attr.attributeValue)]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Privileges CSV Data:\n", csvString);
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.displayName}_privileges_metadata.csv`, csvString);
+    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_privileges_metadata.csv`, csvString);
   }
 
   function exportRelationshipClick(): void {
@@ -642,8 +637,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         }),
     ]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Relationships CSV Data:\n", csvString);
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.displayName}_${selectedValue}_metadata.csv`, csvString);
+    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_${selectedValue}_metadata.csv`, csvString);
   }
 
   const columnDrawer = (

@@ -34,7 +34,6 @@ function App() {
           break;
         case "theme:changed":
         case "settings:updated":
-          console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
           document.body.setAttribute("data-theme", theme);

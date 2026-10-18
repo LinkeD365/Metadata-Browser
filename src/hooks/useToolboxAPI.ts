@@ -11,13 +11,12 @@ export function useConnection() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshConnection = useCallback(async () => {
-    console.log("Refreshing active connection...");
     try {
       const conn = await window.toolboxAPI.connections.getActiveConnection();
       setConnection(conn);
       console.log("Active connection refreshed:", conn);
     } catch (error) {
-      console.error("Error refreshing connection:", error);
+      console.error("Error refreshing active connections.");
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +58,6 @@ export function useEventLog() {
       },
       ...prev.slice(0, 49), // Keep last 50 entries
     ]);
-    console.log(`[${type.toUpperCase()}] ${message}`);
   }, []); // Empty deps is safe because we use functional setState
 
   const clearLogs = useCallback(() => {
