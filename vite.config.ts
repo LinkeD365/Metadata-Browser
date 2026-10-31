@@ -44,6 +44,11 @@ function fixHtmlForPPTB(): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react(), fixHtmlForPPTB()],
+    resolve: {
+        alias: [
+            { find: /^exceljs$/, replacement: 'exceljs/dist/exceljs.bare.min.js' },
+        ],
+    },
     base: './',
     build: {
         outDir: 'dist',

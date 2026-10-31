@@ -87,9 +87,12 @@ export function mergeConnectionComparisonRecords<T extends ConnectionComparisonR
   );
 }
 
-export function getConnectionDisplayLabel(connection: ToolBoxAPI.DataverseConnection | null, index: number): string {
-  const defaultName = `Environment ${index + 1}`;
-  return connection?.name ? `${defaultName} (${connection.name})` : defaultName;
+export function getConnectionDisplayLabel(
+  connection: ToolBoxAPI.DataverseConnection | null,
+  index: number,
+  entityLabel: string,
+): string {
+  return `${entityLabel} (${connection?.name || `Environment ${index + 1}`})`;
 }
 
 export function createConnectionDisplayColumns<T extends ConnectionComparisonRecord>(
@@ -99,7 +102,7 @@ export function createConnectionDisplayColumns<T extends ConnectionComparisonRec
   return connections.slice(1).map((connection, offset) => {
     const connectionIndex = offset + 1;
     return {
-      headerName: `${getConnectionDisplayLabel(connection, connectionIndex)} ${entityLabel}`,
+      headerName: getConnectionDisplayLabel(connection, connectionIndex, entityLabel),
       valueGetter: (params) => params.data?.connectionDisplayNames?.[connectionIndex] ?? "",
     };
   });

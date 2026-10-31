@@ -8,8 +8,10 @@ import { ColDef, SelectionChangedEvent, RowSelectionOptions, RowStyleModule } fr
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { ViewModel } from "../model/ViewModel";
+import { runReportedOperation } from "../utils/async";
 import {
   createConnectionDisplayColumns,
+  getConnectionDisplayLabel,
   createConnectionRowClassRules,
   loadConnectionRecordSets,
   mergeConnectionRecordSets,
@@ -35,7 +37,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
     if (selectedTable && selectedTable.relationships.filter((r) => r.type === type).length === 0) {
       getRelationshipMeta();
     }
-  }, [selectedTable]);
+  }, [selectedTable, type]);
 
   async function getRelationshipMeta() {
     if (!connections.some(Boolean)) {
@@ -43,24 +45,24 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
       return;
     }
 
-    setLoadingMeta(true);
-    const relationshipSets = await loadConnectionRecordSets(
-      connections,
-      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
-      (index) => dvService.getRelationshipsMeta(selectedTable, type, index),
-      (relationship) => relationship.relationshipName,
-    );
+    await runReportedOperation(async () => {
+      const relationshipSets = await loadConnectionRecordSets(
+        connections,
+        (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+        (index) => dvService.getRelationshipsMeta(selectedTable, type, index),
+        (relationship) => relationship.relationshipName,
+      );
 
-    selectedTable.relationships = mergeConnectionRecordSets(
-      relationshipSets,
-      (relationship) => relationship.relationshipName,
-      ["relationshipName"],
-    );
-    onLog(
-      `Loaded ${selectedTable.relationships.length} relationships for table: ${selectedTable.tableName}`,
-      "success",
-    );
-    setLoadingMeta(false);
+      const relationships = mergeConnectionRecordSets(
+        relationshipSets, (relationship) => relationship.relationshipName, ["relationshipName"],
+      );
+      selectedTable.relationships = selectedTable.relationships
+        .filter((relationship) => relationship.type !== type).concat(relationships);
+      onLog(
+        `Loaded ${relationships.length} relationships for table: ${selectedTable.tableName}`,
+        "success",
+      );
+    }, setLoadingMeta, onLog, showNotification, "Unable to load relationships. Check the connections and permissions, then reopen this tab to retry.");
     return;
   }
 
@@ -109,7 +111,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
   const colDefs = React.useMemo<ColDef<RelationshipMeta>[]>(
     () => [
       {
-        headerName: "Relationship Name",
+        headerName: getConnectionDisplayLabel(connections[0] ?? null, 0, "Relationship Name"),
         field: "relationshipName",
         flex: 2,
         sort: "asc",

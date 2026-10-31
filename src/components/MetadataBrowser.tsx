@@ -43,6 +43,8 @@ import { ColumnEditRegular, DismissRegular, OpenRegular, TextboxMoreRegular } fr
 import { ExportPopover } from "./ExportPopover";
 import { TableColumnDrawer } from "./TableColumnDrawer";
 import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
+import { runReportedOperation } from "../utils/async";
+import { saveCsvFile } from "../utils/csvExport";
 import {
   createConnectionDisplayColumns,
   createConnectionRowClassRules,
@@ -81,6 +83,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const [tableQuery, setTableQuery] = React.useState<string>("");
   const [selectedTables, setSelectedTables] = React.useState<Set<TableRowId>>();
   const [isExportPopoverOpen, setIsExportPopoverOpen] = React.useState<boolean>(false);
+  const loadRequest = React.useRef(0);
+  React.useEffect(() => () => { loadRequest.current += 1; }, []);
 
   const filterdTableMetadata: TableMeta[] = React.useMemo(() => {
     if (!tableQuery || tableQuery.trim() === "") {
@@ -100,10 +104,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       try {
         await window.toolboxAPI.utils.showNotification({ title, body, type, duration: 3000 });
       } catch {
-        console.error("Failed to show notification.");
+        onLog("The host could not display a notification.", "error");
       }
     },
-    [],
+    [onLog],
   );
 
   const getMergedAllTables = useCallback(async (): Promise<TableMeta[]> => {
@@ -136,12 +140,12 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       try {
         const tableUrl = await dvService.getTableBrowserUrl(table.metaId, "", connectionTarget);
         await toolboxUtils.openInConnectionBrowser(tableUrl, connectionTarget);
-      } catch (error) {
-        const message = (error as Error).message || "Unknown error";
-        onLog(`Failed to open table ${table.tableName}: ${message}`, "error");
+      } catch {
+        onLog("Unable to open the table in its source environment.", "error");
+        await showNotification("Browser navigation failed", "Check the connection and reopen the table.", "error");
       }
     },
-    [connections, onLog, showNotification],
+    [connections, dvService, onLog, showNotification],
   );
 
   const renderOpenTableButton = useCallback(
@@ -178,9 +182,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         try {
           vm.solutions = await dvService.getSolutions(managed, 0);
           onLog(`Loaded ${vm.solutions.length} solutions from the primary connection.`, "success");
-        } catch (error) {
+        } catch {
           vm.solutions = [];
-          onLog(`Error loading solutions: ${(error as Error).message}`, "error");
+          onLog("Unable to load solutions from the primary connection.", "error");
           await showNotification("Error", "Unable to load solutions from the primary connection.", "error");
         }
       })();
@@ -189,41 +193,22 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   async function getAllTableMeta() {
     vm.selectedSolution = undefined;
-    getTableMeta();
+    await getTableMeta();
   }
   async function getTableMeta() {
-    setLoadingMeta(true);
-    if (vm.selectedSolution) {
-      await getMergedSolutionTables()
-        .then((tables) => {
-          vm.tableMetadata = tables;
-          onLog(
-            `Loaded ${tables.length} tables from the primary connection's solution for comparison.`,
-            "success",
-          );
-        })
-        .catch((error: { message: any }) => {
-          onLog(`Error loading tables from solution: ${error.message}`, "error");
-        })
-        .finally(() => {
-          setLoadingMeta(false);
-        });
-    } else {
-      await getMergedAllTables()
-        .then((tables) => {
-          vm.tableMetadata = tables;
-          onLog(
-            `Loaded ${tables.length} tables from the primary connection for comparison.`,
-            "success",
-          );
-        })
-        .catch((error: { message: any }) => {
-          onLog(`Error loading tables: ${error.message}`, "error");
-        })
-        .finally(() => {
-          setLoadingMeta(false);
-        });
-    }
+    const request = ++loadRequest.current;
+    vm.tableMetadata = [];
+    vm.selectedTables = [];
+    setSelectedTables(undefined);
+    setSelectedTab("tables");
+    await runReportedOperation(async () => {
+      const tables = vm.selectedSolution ? await getMergedSolutionTables() : await getMergedAllTables();
+      if (request !== loadRequest.current) return;
+      vm.tableMetadata = tables;
+      onLog(`Loaded ${tables.length} primary tables for comparison.`, "success");
+    }, (busy) => {
+      if (request === loadRequest.current) setLoadingMeta(busy);
+    }, onLog, showNotification, "Unable to load table metadata. Check connections and permissions, then select the source again to retry.");
   }
 
   const searchTables = async (_searchQuery: string) => {
@@ -253,9 +238,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     setIsTableColumnEditOpen(true);
   }
 
-  function exportTablesClick(): void {
+  async function exportTablesClick(): Promise<void> {
     if (selectedTables === undefined || selectedTables.size === 0) {
-      window.toolboxAPI.utils.showNotification({
+      await window.toolboxAPI.utils.showNotification({
         title: "No Tables Selected",
         body: "Please select one or more tables to export.",
       });
@@ -271,9 +256,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       table.tableName,
       ...vm.tableAttributes.map((attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""),
     ]);
-    const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
-
-    window.toolboxAPI.fileSystem.saveFile("tables_metadata.csv", csvString);
+    await saveCsvFile("tables_metadata.csv", [headers, ...rows],
+      (name, content) => window.toolboxAPI.fileSystem.saveFile(name, content), onLog, showNotification);
   }
 
   function saveTableColumnSelection(): void {
@@ -433,7 +417,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         },
       },
       {
-        headerName: `${getConnectionDisplayLabel(primaryConnection, 0)} Table Name`,
+        headerName: getConnectionDisplayLabel(primaryConnection, 0, "Table Name"),
         field: "primaryDisplayName",
         flex: 2,
         sort: "asc",

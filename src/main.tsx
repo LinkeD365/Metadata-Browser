@@ -9,15 +9,11 @@ const rootElement = document.getElementById("root");
 if (rootElement && !rootElement.hasAttribute("data-reactroot-initialized")) {
   // Mark as initialized to prevent double rendering
   rootElement.setAttribute("data-reactroot-initialized", "true");
-  (async () => {
-    const theme = await window.toolboxAPI.utils.getCurrentTheme();
-    document.body.setAttribute("data-theme", theme);
-    createRoot(rootElement).render(
-      <StrictMode>
-        <App />
-      </StrictMode>
-    );
-  })();
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
 } else if (!rootElement) {
   console.error('Root element not found. Make sure the HTML contains <div id="root"></div>');
 }

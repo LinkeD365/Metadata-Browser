@@ -6,9 +6,11 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { runReportedOperation } from "../utils/async";
 import { BusinessProcessFlowMeta } from "../model/businessProcessFlow";
 import {
   createConnectionDisplayColumns,
+  getConnectionDisplayLabel,
   createConnectionRowClassRules,
   loadConnectionRecordSets,
   mergeConnectionRecordSets,
@@ -59,24 +61,24 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
       return;
     }
 
-    setLoadingMeta(true);
-    const flowSets = await loadConnectionRecordSets(
-      connections,
-      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
-      (index) => dvService.getBusinessProcessFlowsForTable(selectedTable, index),
-      (flow) => flow.flowName,
-    );
+    await runReportedOperation(async () => {
+      const flowSets = await loadConnectionRecordSets(
+        connections,
+        (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+        (index) => dvService.getBusinessProcessFlowsForTable(selectedTable, index),
+        (flow) => flow.flowName,
+      );
 
-    selectedTable.businessProcessFlows = mergeConnectionRecordSets(
-      flowSets,
-      (flow) => flow.flowName,
-      ["flowName"],
-    );
-    onLog(
-      `Loaded ${selectedTable.businessProcessFlows.length} business process flows for table: ${selectedTable.tableName}`,
-      "success",
-    );
-    setLoadingMeta(false);
+      selectedTable.businessProcessFlows = mergeConnectionRecordSets(
+        flowSets,
+        (flow) => flow.flowName,
+        ["flowName"],
+      );
+      onLog(
+        `Loaded ${selectedTable.businessProcessFlows.length} business process flows for table: ${selectedTable.tableName}`,
+        "success",
+      );
+    }, setLoadingMeta, onLog, showNotification, "Unable to load business process flows. Check the connections and permissions, then reopen this tab to retry.");
   }
 
   const defaultColDefs = React.useMemo<ColDef<BusinessProcessFlowMeta>>(() => {
@@ -93,7 +95,7 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
   const colDefs = React.useMemo<ColDef<BusinessProcessFlowMeta>[]>(
     () => [
       {
-        headerName: "Name",
+        headerName: getConnectionDisplayLabel(connections[0] ?? null, 0, "Name"),
         field: "flowName",
         flex: 2,
         sort: "asc",

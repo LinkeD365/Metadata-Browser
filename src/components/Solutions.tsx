@@ -6,9 +6,11 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { runReportedOperation } from "../utils/async";
 import { Solution } from "../model/solution";
 import {
   createConnectionDisplayColumns,
+  getConnectionDisplayLabel,
   createConnectionRowClassRules,
   loadConnectionRecordSets,
   mergeConnectionRecordSets,
@@ -40,21 +42,21 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       return;
     }
 
-    setLoadingMeta(true);
-    const solutionSets = await loadConnectionRecordSets(
-      connections,
-      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
-      (index) => dvService.getSolutionsForTable(selectedTable, index),
-      (solution) => solution.solutionName,
-    );
+    await runReportedOperation(async () => {
+      const solutionSets = await loadConnectionRecordSets(
+        connections,
+        (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+        (index) => dvService.getSolutionsForTable(selectedTable, index),
+        (solution) => solution.solutionName,
+      );
 
-    selectedTable.solutions = mergeConnectionRecordSets(
-      solutionSets,
-      (solution) => solution.uniqueName,
-      ["solutionName"],
-    );
-    onLog(`Loaded ${selectedTable.solutions.length} solutions for table: ${selectedTable.tableName}`, "success");
-    setLoadingMeta(false);
+      selectedTable.solutions = mergeConnectionRecordSets(
+        solutionSets,
+        (solution) => solution.uniqueName,
+        ["solutionName"],
+      );
+      onLog(`Loaded ${selectedTable.solutions.length} solutions for table: ${selectedTable.tableName}`, "success");
+    }, setLoadingMeta, onLog, showNotification, "Unable to load solutions. Check the connections and permissions, then reopen this tab to retry.");
     return;
   }
 
@@ -72,7 +74,7 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
   const colDefs = React.useMemo<ColDef<Solution>[]>(
     () => [
       {
-        headerName: "Name",
+        headerName: getConnectionDisplayLabel(connections[0] ?? null, 0, "Name"),
         field: "solutionName",
         flex: 2,
         sort: "asc",

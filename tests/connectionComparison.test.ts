@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createConnectionDisplayColumns,
   createConnectionRowClassRules,
+  getConnectionDisplayLabel,
   mergeConnectionComparisonRecords,
   mergeConnectionRecordSets,
   type ConnectionComparisonRecord,
@@ -105,9 +106,35 @@ describe("connection comparison", () => {
     );
 
     expect(columns.map((column) => column.headerName)).toEqual([
-      "Environment 2 (Two) Table Name",
-      "Environment 3 (Three) Table Name",
-      "Environment 4 (Four) Table Name",
+      "Table Name (Two)",
+      "Table Name (Three)",
+      "Table Name (Four)",
     ]);
+  });
+
+  it.each(["Table Name", "Column Name", "Key Name", "Privilege Name", "Relationship Name", "Name"])(
+    "keeps the %s prefix for primary and comparison headers",
+    (entityLabel) => {
+      const connection: ToolBoxAPI.DataverseConnection = {
+        id: "dev", name: "Development", url: "https://dev.example", environment: "Dev",
+      };
+
+      expect(getConnectionDisplayLabel(connection, 0, entityLabel)).toBe(`${entityLabel} (Development)`);
+      expect(getConnectionDisplayLabel(connection, 3, entityLabel)).toBe(`${entityLabel} (Development)`);
+      expect(createConnectionDisplayColumns<NamedRecord>([connection], entityLabel)).toEqual([]);
+      expect(createConnectionDisplayColumns<NamedRecord>([connection, connection], entityLabel)[0].headerName)
+        .toBe(`${entityLabel} (Development)`);
+    },
+  );
+
+  it("keeps numbered fallback headers for missing or unnamed connections", () => {
+    const connection: ToolBoxAPI.DataverseConnection = {
+      id: "prod", name: "Production", url: "https://prod.example", environment: "Production",
+    };
+
+    expect(getConnectionDisplayLabel(null, 0, "Table Name")).toBe("Table Name (Environment 1)");
+    expect(getConnectionDisplayLabel({ ...connection, name: "" }, 1, "Table Name")).toBe("Table Name (Environment 2)");
+    expect(createConnectionDisplayColumns<NamedRecord>([connection, null, connection], "Table Name")
+      .map((column) => column.headerName)).toEqual(["Table Name (Environment 2)", "Table Name (Production)"]);
   });
 });

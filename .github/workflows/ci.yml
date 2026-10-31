@@ -36,5 +36,14 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Validate manifest
+        run: npm run validate -- --skip-url-checks
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Build
         run: npm run build
+
+      - name: Verify package
+        run: npm run verify-package
