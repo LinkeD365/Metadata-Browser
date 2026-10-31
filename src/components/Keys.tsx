@@ -8,6 +8,7 @@ import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { runReportedOperation } from "../utils/async";
+import { getKeyRowId } from "../utils/keyMeta";
 import {
   createConnectionDisplayColumns,
   getConnectionDisplayLabel,
@@ -52,7 +53,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
 
       selectedTable.keys = mergeConnectionRecordSets(
         keySets,
-        (keyMeta) => keyMeta.attributes.find((attribute) => attribute.attributeName === "LogicalName")?.attributeValue || keyMeta.keyName,
+        getKeyRowId,
         ["keyName"],
       );
       onLog(`Loaded ${selectedTable.keys.length} keys for table: ${selectedTable.tableName}`, "success");
@@ -119,7 +120,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         defaultColDef={defaultColDefs}
         domLayout="normal"
         rowClassRules={rowClassRules}
-        getRowId={(params) => params.data?.keyName ?? ""}
+        getRowId={(params) => (params.data ? getKeyRowId(params.data) : "")}
         enableCellTextSelection={true}
       />
     </div>
