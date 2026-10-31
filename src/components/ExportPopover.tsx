@@ -35,7 +35,6 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
   const saveSettingsButtonLabel = "Save export settings as default";
 
   async function exportToExcel(): Promise<void> {
-    console.log("Exporting to Excel...", vm.selectedTables);
     if (!vm.selectedTables || vm.selectedTables.length == 0) {
       onLog("No tables selected for export.", "warning");
       window.toolboxAPI.utils.showNotification({
@@ -46,7 +45,6 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
     }
     setBlockClose(true);
     var excelExporter = new ExcelExport({ dvsvc: dvSvc, connection: connection, vm: vm });
-    console.log("Starting export...");
     await excelExporter.export(vm.selectedTables);
     setBlockClose(false);
     setIsExportOpen(false);

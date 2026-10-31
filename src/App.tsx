@@ -7,7 +7,7 @@ import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-com
 import { RelationshipAttribute } from "./model/tableMeta";
 
 function App() {
-  const { primaryConnection, secondaryConnection, isLoading, refreshConnection } = useConnection();
+  const { connections, isLoading, refreshConnection } = useConnection();
 
   const { addLog } = useEventLog();
   const [theme, setTheme] = useState<string>("light");
@@ -34,7 +34,6 @@ function App() {
           break;
         case "theme:changed":
         case "settings:updated":
-          console.log("Theme or settings updated, refreshing theme");
           const theme = await window.toolboxAPI.utils.getCurrentTheme();
           setTheme(theme);
           document.body.setAttribute("data-theme", theme);
@@ -116,8 +115,8 @@ function App() {
           Object.assign(viewModel.excelOptions, excelExport);
         }
         addLog("Loaded default relationship attributes", "info");
-      } catch (error) {
-        console.error("Failed to load default settings:", error);
+      } catch {
+        console.error("Failed to load default settings.");
       }
     };
 
@@ -127,19 +126,17 @@ function App() {
   const dvSvc = useMemo(
     () =>
       new dvService({
-        primaryConnection: primaryConnection,
-        secondaryConnection: secondaryConnection,
+        connections,
         dvApi: window.dataverseAPI,
         onLog: addLog,
       }),
-    [primaryConnection, secondaryConnection, addLog],
+    [connections, addLog],
   );
   return (
     <>
       <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme}>
         <MetadataBrowser
-          primaryConnection={primaryConnection}
-          secondaryConnection={secondaryConnection}
+          connections={connections}
           vm={viewModel}
           dvService={dvSvc}
           onLog={addLog}

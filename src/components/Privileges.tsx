@@ -7,11 +7,15 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  loadConnectionRecordSets,
+  mergeConnectionRecordSets,
+} from "../utils/connectionComparison";
 
 interface PrivilegesProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -20,38 +24,32 @@ interface PrivilegesProps {
 }
 
 export const Privileges = observer((props: PrivilegesProps): React.JSX.Element => {
-  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification } = props;
+  const { connections, dvService, onLog, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
     onLog(`Loading privileges for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Privileges component: ", selectedTable);
     if (selectedTable && selectedTable.privileges?.length === 0) {
       getPrivileges();
     }
   }, [selectedTable]);
 
   async function getPrivileges() {
-    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
+    if (!connections.some(Boolean)) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
-    console.log("Fetching privileges metadata for table: ", selectedTable.tableName);
-
     setLoadingMeta(true);
-    const [primaryPrivileges, secondaryPrivileges] = await Promise.all([
-      canLoadPrimary ? dvService.getPrivilegesMetadata(selectedTable, "primary") : Promise.resolve([]),
-      canLoadSecondary ? dvService.getPrivilegesMetadata(selectedTable, "secondary") : Promise.resolve([]),
-    ]);
-
-    selectedTable.privileges = mergeConnectionComparisonRecords(
-      primaryPrivileges,
-      secondaryPrivileges,
+    const privilegeSets = await loadConnectionRecordSets(
+      connections,
+      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+      (index) => dvService.getPrivilegesMetadata(selectedTable, index),
       (privilege) => privilege.privilegeName,
+    );
+
+    selectedTable.privileges = mergeConnectionRecordSets(
+      privilegeSets,
       (privilege) => privilege.privilegeName,
       ["privilegeName"],
     );
@@ -95,29 +93,18 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
         flex: 2,
         sort: "asc",
         valueGetter: (params) =>
-          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.privilegeName ?? ""),
+          !params.data?.hasPrimaryConnection ? "" : (params.data?.privilegeName ?? ""),
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name
-                ? `2nd Privilege Name (${secondaryConnection.name})`
-                : "2nd Privilege Name",
-              field: "secondaryDisplayName",
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } as ColDef<PrivilegeMeta>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<PrivilegeMeta>(connections, "Privilege Name"),
       ...createPrivilegeAttr,
     ],
 
-    [createPrivilegeAttr, secondaryConnection],
+    [connections, createPrivilegeAttr],
   );
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<PrivilegeMeta>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<PrivilegeMeta>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   const privilegesGrid = (

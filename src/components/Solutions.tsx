@@ -7,11 +7,15 @@ import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { Solution } from "../model/solution";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  loadConnectionRecordSets,
+  mergeConnectionRecordSets,
+} from "../utils/connectionComparison";
 
 interface SolutionsProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -20,39 +24,33 @@ interface SolutionsProps {
 }
 
 export const Solutions = observer((props: SolutionsProps): React.JSX.Element => {
-  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification } = props;
+  const { connections, dvService, onLog, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
     onLog(`Loading solutions for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Solutions component: ", selectedTable);
     if (selectedTable && selectedTable.solutions?.length === 0) {
       getSolutions();
     }
   }, [selectedTable]);
 
   async function getSolutions() {
-    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
+    if (!connections.some(Boolean)) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
-    console.log("Fetching solutions metadata for table: ", selectedTable.tableName);
-
     setLoadingMeta(true);
-    const [primarySolutions, secondarySolutions] = await Promise.all([
-      canLoadPrimary ? dvService.getSolutionsForTable(selectedTable, "primary") : Promise.resolve([]),
-      canLoadSecondary ? dvService.getSolutionsForTable(selectedTable, "secondary") : Promise.resolve([]),
-    ]);
-
-    selectedTable.solutions = mergeConnectionComparisonRecords(
-      primarySolutions,
-      secondarySolutions,
-      (solution) => solution.uniqueName,
+    const solutionSets = await loadConnectionRecordSets(
+      connections,
+      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+      (index) => dvService.getSolutionsForTable(selectedTable, index),
       (solution) => solution.solutionName,
+    );
+
+    selectedTable.solutions = mergeConnectionRecordSets(
+      solutionSets,
+      (solution) => solution.uniqueName,
       ["solutionName"],
     );
     onLog(`Loaded ${selectedTable.solutions.length} solutions for table: ${selectedTable.tableName}`, "success");
@@ -79,18 +77,9 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
         flex: 2,
         sort: "asc",
         valueGetter: (params) =>
-          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.solutionName ?? ""),
+          !params.data?.hasPrimaryConnection ? "" : (params.data?.solutionName ?? ""),
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name ? `2nd Name (${secondaryConnection.name})` : "2nd Name",
-              field: "secondaryDisplayName",
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } as ColDef<Solution>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<Solution>(connections, "Name"),
       { headerName: "Unique Name", field: "uniqueName" },
       { headerName: "Description", field: "description" },
       { headerName: "Version", field: "version" },
@@ -106,12 +95,12 @@ export const Solutions = observer((props: SolutionsProps): React.JSX.Element => 
       },
     ],
     // Column definitions with formatters - no reactive dependencies needed
-    [secondaryConnection],
+    [connections],
   );
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<Solution>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<Solution>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   const solutionsGrid = (

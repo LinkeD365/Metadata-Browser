@@ -43,7 +43,11 @@ import { ColumnEditRegular, DismissRegular, OpenRegular, TextboxMoreRegular } fr
 import { ExportPopover } from "./ExportPopover";
 import { TableColumnDrawer } from "./TableColumnDrawer";
 import { SolutionSelectorDrawer } from "./SolutionSelectorDrawer";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  getConnectionDisplayLabel,
+} from "../utils/connectionComparison";
 
 const useStyles = makeStyles({
   root: { backgroundColor: tokens.colorNeutralBackground1 },
@@ -51,8 +55,7 @@ const useStyles = makeStyles({
 });
 
 interface MetadataBrowserProps {
-  primaryConnection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: DataverseService;
   isLoading: boolean;
   vm: ViewModel;
@@ -60,7 +63,8 @@ interface MetadataBrowserProps {
 }
 
 export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX.Element => {
-  const { primaryConnection, secondaryConnection, dvService, onLog, vm } = props;
+  const { connections, dvService, onLog, vm } = props;
+  const primaryConnection = connections[0] ?? null;
   const selectSolutionLabel = "Select a solution to load tables";
   const openTableSourceOptionsLabel = "Open table source options";
   const openExportDialogLabel = "Open export dialog";
@@ -85,7 +89,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       return vm.tableMetadata.filter(
         (t) =>
           t.primaryDisplayName.toLowerCase().includes(tableQuery.toLowerCase()) ||
-          t.secondaryDisplayName?.toLowerCase().includes(tableQuery.toLowerCase()) ||
+          t.connectionDisplayNames?.some((name) => name?.toLowerCase().includes(tableQuery.toLowerCase())) ||
           t.tableName.toLowerCase().includes(tableQuery.toLowerCase()),
       );
   }, [tableQuery, vm.tableMetadata]);
@@ -95,106 +99,49 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     async (title: string, body: string, type: "success" | "info" | "warning" | "error") => {
       try {
         await window.toolboxAPI.utils.showNotification({ title, body, type, duration: 3000 });
-      } catch (error) {
-        console.error("Error showing notification:", error);
+      } catch {
+        console.error("Failed to show notification.");
       }
     },
     [],
   );
 
-  const mergeTableMetadata = useCallback((primaryTables: TableMeta[], secondaryTables: TableMeta[]): TableMeta[] => {
-    return mergeConnectionComparisonRecords(
-      primaryTables,
-      secondaryTables,
-      (table) => table.tableName,
-      (table) => table.primaryDisplayName,
-      ["primaryDisplayName"],
-    );
-  }, []);
-
   const getMergedAllTables = useCallback(async (): Promise<TableMeta[]> => {
-    const canLoadPrimary = Boolean(primaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
-      throw new Error("No connection available");
-    }
-
-    const [primaryTables, secondaryTables] = await Promise.all([
-      canLoadPrimary ? dvService.getAllTables(true) : Promise.resolve([]),
-      canLoadSecondary ? dvService.getAllTables(false) : Promise.resolve([]),
-    ]);
-
-    return mergeTableMetadata(primaryTables, secondaryTables);
-  }, [dvService, mergeTableMetadata, primaryConnection, secondaryConnection]);
+    return dvService.getComparisonTables();
+  }, [dvService]);
 
   const getMergedSolutionTables = useCallback(async (): Promise<TableMeta[]> => {
-    if (!vm.selectedSolution) {
+    const selectedSolution = vm.selectedSolution;
+    if (!selectedSolution) {
       return [];
     }
 
-    const canLoadPrimary = Boolean(primaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
-      throw new Error("No connection available");
-    }
-
-    if (canLoadPrimary) {
-      const primaryTables = await dvService.getSolutionTables(vm.selectedSolution.uniqueName, "primary");
-
-      if (!canLoadSecondary) {
-        return mergeTableMetadata(primaryTables, []);
-      }
-
-      const secondaryLookups = await Promise.all(
-        primaryTables.map((primaryTable) => dvService.getTableByLogicalName(primaryTable.tableName, "secondary")),
-      );
-      const secondaryTables = secondaryLookups.filter((table): table is TableMeta => Boolean(table));
-
-      return mergeTableMetadata(primaryTables, secondaryTables);
-    }
-
-    const secondaryTables = canLoadSecondary
-      ? await dvService
-          .getSolutionTables(vm.selectedSolution.uniqueName, "secondary")
-          .catch((error: { message?: string }) => {
-            onLog(
-              `Unable to load solution tables from secondary connection for ${vm.selectedSolution?.solutionName}: ${error.message ?? "Unknown error"}`,
-              "warning",
-            );
-            return [];
-          })
-      : [];
-
-    return mergeTableMetadata([], secondaryTables);
-  }, [dvService, mergeTableMetadata, onLog, primaryConnection, secondaryConnection, vm.selectedSolution]);
+    return dvService.getComparisonTables(selectedSolution.uniqueName);
+  }, [dvService, vm.selectedSolution]);
 
   const openTableInConnectionBrowser = useCallback(
     async (table: TableMeta) => {
-      if (!primaryConnection) {
-        onLog("Cannot open table: no active connection available.", "warning");
-        await showNotification("No active connection", "Please connect before opening a table.", "warning");
-        return;
-      }
-
       if (!table.metaId) {
         onLog(`Cannot open table ${table.tableName}: missing table metadata ID.`, "warning");
         return;
       }
-      const toolboxUtils = window.toolboxAPI.utils as ToolBoxAPI.UtilsAPI & {
-        openInConnectionBrowser: (url: string, connectionTarget?: "primary" | "secondary") => Promise<void>;
-      };
+      const connectionTarget = table.sourceConnectionIndex ?? 0;
+      if (!connections[connectionTarget]) {
+        onLog("Cannot open table: its source environment is no longer connected.", "warning");
+        await showNotification("No active connection", "Reconnect the table's source environment before opening it.", "warning");
+        return;
+      }
+      const toolboxUtils = window.toolboxAPI.utils;
 
       try {
-        const tableUrl = await dvService.getTableBrowserUrl(table.metaId);
-        await toolboxUtils.openInConnectionBrowser(tableUrl);
+        const tableUrl = await dvService.getTableBrowserUrl(table.metaId, "", connectionTarget);
+        await toolboxUtils.openInConnectionBrowser(tableUrl, connectionTarget);
       } catch (error) {
         const message = (error as Error).message || "Unknown error";
         onLog(`Failed to open table ${table.tableName}: ${message}`, "error");
       }
     },
-    [primaryConnection, onLog, showNotification],
+    [connections, onLog, showNotification],
   );
 
   const renderOpenTableButton = useCallback(
@@ -227,17 +174,18 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   React.useEffect(() => {
     if (isSolutionSelOpen) {
-      dvService
-        .getSolutions(managed)
-        .then((solutions) => {
-          vm.solutions = solutions;
-          onLog(`Loaded ${solutions.length} solutions from ${primaryConnection?.name}`, "success");
-        })
-        .catch((error: { message: any }) => {
-          onLog(`Error loading solutions: ${error.message}`, "error");
-        });
+      void (async () => {
+        try {
+          vm.solutions = await dvService.getSolutions(managed, 0);
+          onLog(`Loaded ${vm.solutions.length} solutions from the primary connection.`, "success");
+        } catch (error) {
+          vm.solutions = [];
+          onLog(`Error loading solutions: ${(error as Error).message}`, "error");
+          await showNotification("Error", "Unable to load solutions from the primary connection.", "error");
+        }
+      })();
     }
-  }, [isSolutionSelOpen, managed, primaryConnection]);
+  }, [dvService, isSolutionSelOpen, managed, onLog, showNotification, vm]);
 
   async function getAllTableMeta() {
     vm.selectedSolution = undefined;
@@ -250,7 +198,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         .then((tables) => {
           vm.tableMetadata = tables;
           onLog(
-            `Loaded ${tables.length} tables from solution: ${vm.selectedSolution?.solutionName} (${primaryConnection?.name}${secondaryConnection ? ` and ${secondaryConnection.name}` : ""})`,
+            `Loaded ${tables.length} tables from the primary connection's solution for comparison.`,
             "success",
           );
         })
@@ -265,7 +213,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         .then((tables) => {
           vm.tableMetadata = tables;
           onLog(
-            `Loaded ${tables.length} tables from ${primaryConnection?.name}${secondaryConnection ? ` and ${secondaryConnection.name}` : ""}`,
+            `Loaded ${tables.length} tables from the primary connection for comparison.`,
             "success",
           );
         })
@@ -298,7 +246,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   function tableSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
     //setTableQuery(data.value ?? "");
-    console.log("Table search input: ", tableQuery);
     debouncedTableSearch(data.value ?? "");
   }
 
@@ -326,7 +273,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     ]);
     const csvString = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
-    console.log("CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile("tables_metadata.csv", csvString);
   }
 
@@ -365,7 +311,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   const handleRowDoubleClick = React.useCallback(
     (item: TableMeta) => {
-      console.log("Row double clicked: ", item);
       if (!vm.selectedTables) {
         vm.selectedTables = [];
       }
@@ -423,8 +368,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const tableDetails = vm.selectedTables?.map((t) => (
     <div key={t.tableName} role="tabpanel" aria-labelledby={`Table-${t.tableName}`}>
       <TableDetails
-        primaryConnection={primaryConnection}
-        secondaryConnection={secondaryConnection}
+        connections={connections}
         dvService={dvService}
         isLoading={loadingMeta}
         viewModel={vm}
@@ -489,23 +433,12 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         },
       },
       {
-        headerName:
-          secondaryConnection && primaryConnection?.name ? `Table Name (${primaryConnection.name})` : "Table Name",
+        headerName: `${getConnectionDisplayLabel(primaryConnection, 0)} Table Name`,
         field: "primaryDisplayName",
         flex: 2,
         sort: "asc",
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name ? `2nd Table Name (${secondaryConnection.name})` : "2nd Table Name",
-              field: "secondaryDisplayName",
-              flex: 2,
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } satisfies ColDef<TableMeta>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<TableMeta>(connections, "Table Name"),
       {
         headerName: "Logical Name",
         field: "tableName",
@@ -523,7 +456,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
             }) as ColDef<TableMeta>,
         ),
     ],
-    [primaryConnection, renderOpenTableButton, secondaryConnection, vm.tableAttributes],
+    [connections, primaryConnection, renderOpenTableButton, vm.tableAttributes],
   );
 
   const rowSelection = React.useMemo<RowSelectionOptions | "single" | "multiple">(() => {
@@ -533,8 +466,8 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }, []);
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<TableMeta>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<TableMeta>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   function tableSelected(event: SelectionChangedEvent<TableMeta>): void {

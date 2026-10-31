@@ -11,6 +11,9 @@ export class TableMeta {
   secondaryDisplayName?: string;
   hasPrimaryConnection: boolean;
   hasSecondaryConnection: boolean;
+  connectionPresence: boolean[] = [];
+  connectionDisplayNames: string[] = [];
+  sourceConnectionIndex?: number;
   metaId: string;
 
   columns: ColumnMeta[] = [];

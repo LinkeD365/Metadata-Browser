@@ -7,11 +7,15 @@ import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { BusinessProcessFlowMeta } from "../model/businessProcessFlow";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  loadConnectionRecordSets,
+  mergeConnectionRecordSets,
+} from "../utils/connectionComparison";
 
 interface BusinessProcessFlowsProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -22,8 +26,7 @@ interface BusinessProcessFlowsProps {
 
 export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps): React.JSX.Element => {
   const {
-    connection,
-    secondaryConnection,
+    connections,
     dvService,
     onLog,
     selectedTable,
@@ -51,24 +54,21 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
   }, [selectedTable]);
 
   async function getBusinessProcessFlows() {
-    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
+    if (!connections.some(Boolean)) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
     setLoadingMeta(true);
-    const [primaryFlows, secondaryFlows] = await Promise.all([
-      canLoadPrimary ? dvService.getBusinessProcessFlowsForTable(selectedTable, "primary") : Promise.resolve([]),
-      canLoadSecondary ? dvService.getBusinessProcessFlowsForTable(selectedTable, "secondary") : Promise.resolve([]),
-    ]);
-
-    selectedTable.businessProcessFlows = mergeConnectionComparisonRecords(
-      primaryFlows,
-      secondaryFlows,
+    const flowSets = await loadConnectionRecordSets(
+      connections,
+      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+      (index) => dvService.getBusinessProcessFlowsForTable(selectedTable, index),
       (flow) => flow.flowName,
+    );
+
+    selectedTable.businessProcessFlows = mergeConnectionRecordSets(
+      flowSets,
       (flow) => flow.flowName,
       ["flowName"],
     );
@@ -98,18 +98,9 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
         flex: 2,
         sort: "asc",
         valueGetter: (params) =>
-          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.flowName ?? ""),
+          !params.data?.hasPrimaryConnection ? "" : (params.data?.flowName ?? ""),
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name ? `2nd Name (${secondaryConnection.name})` : "2nd Name",
-              field: "secondaryDisplayName",
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } as ColDef<BusinessProcessFlowMeta>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<BusinessProcessFlowMeta>(connections, "Name"),
       { headerName: "Type", field: "type" },
       ...businessProcessFlowAttributes.map(
         (attrName) =>
@@ -122,12 +113,12 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
           }) as ColDef<BusinessProcessFlowMeta>,
       ),
     ],
-    [businessProcessFlowAttributes, secondaryConnection],
+    [businessProcessFlowAttributes, connections],
   );
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<BusinessProcessFlowMeta>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<BusinessProcessFlowMeta>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   const getFlowRowId = React.useCallback((flow: BusinessProcessFlowMeta) => {

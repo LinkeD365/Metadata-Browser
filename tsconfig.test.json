@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@pptb/types", "vitest/globals"]
+  },
+  "include": ["src", "tests"]
+}

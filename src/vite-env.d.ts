@@ -9,7 +9,7 @@ declare global {
 
 declare namespace ToolBoxAPI {
   interface UtilsAPI {
-    openInConnectionBrowser: (url: string, connectionTarget?: "primary" | "secondary") => Promise<void>;
+    openInConnectionBrowser: (url: string, connectionTarget?: ToolBoxAPI.ConnectionTarget) => Promise<void>;
   }
 }
 

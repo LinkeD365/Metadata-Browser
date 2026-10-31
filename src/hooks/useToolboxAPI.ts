@@ -7,20 +7,14 @@ export type LogEntry = {
 };
 
 export function useConnection() {
-  const [primaryConnection, setPrimaryConnection] = useState<ToolBoxAPI.DataverseConnection | null>(null);
-  const [secondaryConnection, setSecondaryConnection] = useState<ToolBoxAPI.DataverseConnection | null>(null);
+  const [connections, setConnections] = useState<Array<ToolBoxAPI.DataverseConnection | null>>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshConnection = useCallback(async () => {
-    console.log("Refreshing active connection...");
     try {
-      const primaryConn = await window.toolboxAPI.connections.getActiveConnection();
-      const secondaryConn = await window.toolboxAPI.connections.getSecondaryConnection();
-      setPrimaryConnection(primaryConn);
-      setSecondaryConnection(secondaryConn);
-      console.log("Active connection refreshed:", primaryConn, secondaryConn);
-    } catch (error) {
-      console.error("Error refreshing connection:", error);
+      setConnections(await window.toolboxAPI.connections.getConnections());
+    } catch {
+      console.error("Error refreshing active connection.");
     } finally {
       setIsLoading(false);
     }
@@ -30,7 +24,7 @@ export function useConnection() {
     refreshConnection();
   }, [refreshConnection]);
 
-  return { primaryConnection, secondaryConnection, isLoading, refreshConnection };
+  return { connections, isLoading, refreshConnection };
 }
 
 export function useToolboxEvents(onEvent: (event: string, data: any) => void) {
@@ -62,7 +56,6 @@ export function useEventLog() {
       },
       ...prev.slice(0, 49), // Keep last 50 entries
     ]);
-    console.log(`[${type.toUpperCase()}] ${message}`);
   }, []); // Empty deps is safe because we use functional setState
 
   const clearLogs = useCallback(() => {

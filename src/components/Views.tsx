@@ -7,11 +7,15 @@ import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { ViewMeta } from "../model/view";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  loadConnectionRecordSets,
+  mergeConnectionRecordSets,
+} from "../utils/connectionComparison";
 
 interface ViewsProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -21,7 +25,7 @@ interface ViewsProps {
 }
 
 export const Views = observer((props: ViewsProps): React.JSX.Element => {
-  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification, viewAttributes } = props;
+  const { connections, dvService, onLog, selectedTable, showNotification, viewAttributes } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   const filteredViews = React.useMemo(() => {
@@ -43,25 +47,22 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
   }, [selectedTable]);
 
   async function getViews() {
-    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
+    if (!connections.some(Boolean)) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
     setLoadingMeta(true);
-    const [primaryViews, secondaryViews] = await Promise.all([
-      canLoadPrimary ? dvService.getViewsForTable(selectedTable, "primary") : Promise.resolve([]),
-      canLoadSecondary ? dvService.getViewsForTable(selectedTable, "secondary") : Promise.resolve([]),
-    ]);
-
-    selectedTable.views = mergeConnectionComparisonRecords(
-      primaryViews,
-      secondaryViews,
-      (view) => `${view.type}:${view.viewName}`,
+    const viewSets = await loadConnectionRecordSets(
+      connections,
+      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+      (index) => dvService.getViewsForTable(selectedTable, index),
       (view) => view.viewName,
+    );
+
+    selectedTable.views = mergeConnectionRecordSets(
+      viewSets,
+      (view) => `${view.type}:${view.viewName}`,
       ["viewName"],
     );
     onLog(`Loaded ${selectedTable.views.length} views for table: ${selectedTable.tableName}`, "success");
@@ -87,18 +88,9 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
         flex: 2,
         sort: "asc",
         valueGetter: (params) =>
-          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.viewName ?? ""),
+          !params.data?.hasPrimaryConnection ? "" : (params.data?.viewName ?? ""),
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name ? `2nd Name (${secondaryConnection.name})` : "2nd Name",
-              field: "secondaryDisplayName",
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } as ColDef<ViewMeta>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<ViewMeta>(connections, "Name"),
       { headerName: "Type", field: "type" },
       ...viewAttributes.map(
         (attrName) =>
@@ -111,7 +103,7 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
           }) as ColDef<ViewMeta>,
       ),
     ],
-    [secondaryConnection, viewAttributes],
+    [connections, viewAttributes],
   );
 
   const getViewRowId = React.useCallback((view: ViewMeta) => {
@@ -121,8 +113,8 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
   }, []);
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<ViewMeta>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<ViewMeta>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   const viewsGrid = (

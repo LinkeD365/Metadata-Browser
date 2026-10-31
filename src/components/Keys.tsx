@@ -7,11 +7,15 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  loadConnectionRecordSets,
+  mergeConnectionRecordSets,
+} from "../utils/connectionComparison";
 
 interface KeysProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -20,38 +24,32 @@ interface KeysProps {
 }
 
 export const Keys = observer((props: KeysProps): React.JSX.Element => {
-  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification } = props;
+  const { connections, dvService, onLog, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
     onLog(`Loading keys for table: ${selectedTable.tableName}`, "info");
-    console.log("Selected table in Keys component: ", selectedTable);
     if (selectedTable && selectedTable.keys?.length === 0) {
       getKeysMeta();
     }
   }, [selectedTable]);
 
   async function getKeysMeta() {
-    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
+    if (!connections.some(Boolean)) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
-    console.log("Fetching keys metadata for table: ", selectedTable.tableName);
-
     setLoadingMeta(true);
-    const [primaryKeys, secondaryKeys] = await Promise.all([
-      canLoadPrimary ? dvService.getKeysMeta(selectedTable, "primary") : Promise.resolve([]),
-      canLoadSecondary ? dvService.getKeysMeta(selectedTable, "secondary") : Promise.resolve([]),
-    ]);
-
-    selectedTable.keys = mergeConnectionComparisonRecords(
-      primaryKeys,
-      secondaryKeys,
+    const keySets = await loadConnectionRecordSets(
+      connections,
+      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+      (index) => dvService.getKeysMeta(selectedTable, index),
       (keyMeta) => keyMeta.keyName,
+    );
+
+    selectedTable.keys = mergeConnectionRecordSets(
+      keySets,
       (keyMeta) => keyMeta.keyName,
       ["keyName"],
     );
@@ -95,27 +93,18 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         flex: 2,
         sort: "asc",
         valueGetter: (params) =>
-          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.keyName ?? ""),
+          !params.data?.hasPrimaryConnection ? "" : (params.data?.keyName ?? ""),
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name ? `2nd Key Name (${secondaryConnection.name})` : "2nd Key Name",
-              field: "secondaryDisplayName",
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } as ColDef<KeyMeta>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<KeyMeta>(connections, "Key Name"),
       ...createKeyAttr,
     ],
 
-    [createKeyAttr, secondaryConnection],
+    [connections, createKeyAttr],
   );
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<KeyMeta>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<KeyMeta>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   const keyColumnGrid = (

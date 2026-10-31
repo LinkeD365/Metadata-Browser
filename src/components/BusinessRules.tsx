@@ -7,11 +7,15 @@ import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { BusinessRuleMeta } from "../model/businessRule";
-import { createConnectionRowClassRules, mergeConnectionComparisonRecords } from "../utils/connectionComparison";
+import {
+  createConnectionDisplayColumns,
+  createConnectionRowClassRules,
+  loadConnectionRecordSets,
+  mergeConnectionRecordSets,
+} from "../utils/connectionComparison";
 
 interface BusinessRulesProps {
-  connection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
@@ -21,7 +25,7 @@ interface BusinessRulesProps {
 }
 
 export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Element => {
-  const { connection, secondaryConnection, dvService, onLog, selectedTable, showNotification, businessRuleAttributes } =
+  const { connections, dvService, onLog, selectedTable, showNotification, businessRuleAttributes } =
     props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
@@ -44,24 +48,21 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
   }, [selectedTable]);
 
   async function getBusinessRules() {
-    const canLoadPrimary = Boolean(connection && selectedTable.hasPrimaryConnection);
-    const canLoadSecondary = Boolean(secondaryConnection && selectedTable.hasSecondaryConnection);
-
-    if (!canLoadPrimary && !canLoadSecondary) {
+    if (!connections.some(Boolean)) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
 
     setLoadingMeta(true);
-    const [primaryRules, secondaryRules] = await Promise.all([
-      canLoadPrimary ? dvService.getBusinessRulesForTable(selectedTable, "primary") : Promise.resolve([]),
-      canLoadSecondary ? dvService.getBusinessRulesForTable(selectedTable, "secondary") : Promise.resolve([]),
-    ]);
-
-    selectedTable.businessRules = mergeConnectionComparisonRecords(
-      primaryRules,
-      secondaryRules,
+    const ruleSets = await loadConnectionRecordSets(
+      connections,
+      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+      (index) => dvService.getBusinessRulesForTable(selectedTable, index),
       (rule) => rule.ruleName,
+    );
+
+    selectedTable.businessRules = mergeConnectionRecordSets(
+      ruleSets,
       (rule) => rule.ruleName,
       ["ruleName"],
     );
@@ -91,18 +92,9 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
         flex: 2,
         sort: "asc",
         valueGetter: (params) =>
-          secondaryConnection && !params.data?.hasPrimaryConnection ? "" : (params.data?.ruleName ?? ""),
+          !params.data?.hasPrimaryConnection ? "" : (params.data?.ruleName ?? ""),
       },
-      ...(secondaryConnection
-        ? [
-            {
-              headerName: secondaryConnection.name ? `2nd Name (${secondaryConnection.name})` : "2nd Name",
-              field: "secondaryDisplayName",
-              valueGetter: (params) =>
-                params.data?.hasSecondaryConnection ? params.data.secondaryDisplayName || "" : "",
-            } as ColDef<BusinessRuleMeta>,
-          ]
-        : []),
+      ...createConnectionDisplayColumns<BusinessRuleMeta>(connections, "Name"),
       { headerName: "Type", field: "type" },
       ...businessRuleAttributes.map(
         (attrName) =>
@@ -115,12 +107,12 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
           }) as ColDef<BusinessRuleMeta>,
       ),
     ],
-    [businessRuleAttributes, secondaryConnection],
+    [businessRuleAttributes, connections],
   );
 
   const rowClassRules = React.useMemo(
-    () => createConnectionRowClassRules<BusinessRuleMeta>(Boolean(secondaryConnection)),
-    [secondaryConnection],
+    () => createConnectionRowClassRules<BusinessRuleMeta>(connections.filter(Boolean).length > 1),
+    [connections],
   );
 
   const getRuleRowId = React.useCallback((rule: BusinessRuleMeta) => {

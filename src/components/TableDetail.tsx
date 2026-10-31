@@ -49,8 +49,7 @@ import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 
 interface TableDetailProps {
-  primaryConnection: ToolBoxAPI.DataverseConnection | null;
-  secondaryConnection: ToolBoxAPI.DataverseConnection | null;
+  connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
   isLoading: boolean;
   viewModel: ViewModel;
@@ -62,8 +61,7 @@ interface TableDetailProps {
 
 export const TableDetails = observer((props: TableDetailProps): React.JSX.Element => {
   const {
-    primaryConnection,
-    secondaryConnection,
+    connections,
     dvService,
     onLog,
     viewModel,
@@ -160,12 +158,10 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const debouncedSearchBusinessRules = React.useCallback(debounce(searchBusinessRules, 300), []);
 
   function columnSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
-    //console.log("Table search input: ", columnQuery);
     debouncedSearchCols(data.value ?? "");
   }
 
   function relationshipSearch(_e: SearchBoxChangeEvent, data: InputOnChangeData): void {
-    //console.log("Table search input: ", columnQuery);
     debouncedSearchRels(data.value ?? "");
   }
 
@@ -402,7 +398,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
   function saveColumnAttributes(): void {
     const customCols = JSON.stringify(viewModel.columnAttributes.filter((attr) => attr.custom));
-    console.log("Custom Columns to retain: ", customCols);
     viewModel.columnAttributes = selectedColumnAttributes
       .map((id) => ({ name: id.toString(), custom: false }))
       .concat(JSON.parse(customCols));
@@ -550,7 +545,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     const headers = ["Attribute Name", "Value"];
     const rows = selTable.attributes.map((attr) => [attr.attributeName, attr.attributeValue]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Attributes CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_metadata.csv`, csvString);
   }
 
@@ -571,12 +565,12 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       }),
     ]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Attributes CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_columns_metadata.csv`, csvString);
   }
 
   async function openTableSectionInBrowser(pathSuffix: string, sectionName: string): Promise<void> {
-    if (!primaryConnection) {
+    const connectionTarget = selTable.sourceConnectionIndex ?? 0;
+    if (!connections[connectionTarget]) {
       await showNotification("No Connection", "Please connect to a Dataverse environment", "warning");
       return;
     }
@@ -586,13 +580,11 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       return;
     }
 
-    const toolboxUtils = window.toolboxAPI.utils as ToolBoxAPI.UtilsAPI & {
-      openInConnectionBrowser: (url: string, connectionTarget?: "primary" | "secondary") => Promise<void>;
-    };
+    const toolboxUtils = window.toolboxAPI.utils;
 
     try {
-      const tableUrl = await dvService.getTableBrowserUrl(selTable.metaId, pathSuffix);
-      await toolboxUtils.openInConnectionBrowser(tableUrl);
+      const tableUrl = await dvService.getTableBrowserUrl(selTable.metaId, pathSuffix, connectionTarget);
+      await toolboxUtils.openInConnectionBrowser(tableUrl, connectionTarget);
     } catch (error) {
       const message = (error as Error).message || "Unknown error";
       onLog(`Failed to open ${sectionName} for table ${selTable.tableName}: ${message}`, "error");
@@ -616,7 +608,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     ]);
     const rows = data;
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Solutions CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_solutions_metadata.csv`, csvString);
   }
 
@@ -626,7 +617,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     const data = selTable.privileges;
     const rows = data.map((priv) => [priv.privilegeName, ...priv.attributes.map((attr) => attr.attributeValue)]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Privileges CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_privileges_metadata.csv`, csvString);
   }
 
@@ -653,7 +643,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         }),
     ]);
     const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    console.log("Relationships CSV Data:\n", csvString);
     window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_${selectedValue}_metadata.csv`, csvString);
   }
 
@@ -1218,8 +1207,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             {selectedValue === "details" && tableDetails}
             {selectedValue === "columns" && (
               <TableColumns
-                primary={primaryConnection}
-                secondary={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 viewModel={viewModel}
@@ -1230,8 +1218,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "keys" && (
               <Keys
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1241,8 +1228,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "OneToManyRelationship" && (
               <Relationships
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1254,8 +1240,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "ManyToOneRelationship" && (
               <Relationships
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1267,8 +1252,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "ManyToManyRelationship" && (
               <Relationships
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1280,8 +1264,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "Privileges" && (
               <Privileges
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1291,8 +1274,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "Solutions" && (
               <Solutions
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1302,8 +1284,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "Views" && (
               <Views
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1314,8 +1295,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "BusinessProcessFlows" && (
               <BusinessProcessFlows
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
@@ -1326,8 +1306,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
             )}
             {selectedValue === "BusinessRules" && (
               <BusinessRules
-                connection={primaryConnection}
-                secondaryConnection={secondaryConnection}
+                connections={connections}
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
