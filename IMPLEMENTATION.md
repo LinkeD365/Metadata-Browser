@@ -45,3 +45,22 @@ npm run build
 npm run validate
 npm test
 ```
+
+## CI and Releases
+
+The workflows follow BulkDataStudio's Release Please and npm trusted-publishing pattern, targeting this repository's `master` branch.
+
+- `.github/workflows/ci.yml` runs on pull requests and pushes to `master`, and can be started manually. It installs from `npm-shrinkwrap.json` with `npm ci`, runs the automated tests and their type check, and builds using Node.js 24.
+- `.github/workflows/release.yml` runs on pushes to `master` or manual dispatch from `master`. Release Please creates or updates a release pull request from Conventional Commits such as `fix:` and `feat:`. Review and merge that PR to create the GitHub release and trigger publishing.
+- `release-please-config.json` uses the Node release strategy, keeping the package and shrinkwrap versions in sync and generating `CHANGELOG.md`. Tags remain plain versions such as `0.7.1`, matching existing releases. The bootstrap commit and `.release-please-manifest.json` start release tracking after the existing `0.7.0` release.
+- Publishing checks out the generated release tag, runs tests and the build, then publishes `@linked365/pptb-metadata-browser` publicly with provenance. Other pushes do not publish or directly bump versions. Release runs are serialized.
+
+Before the first automated release, configure:
+
+1. GitHub Actions repository settings to allow workflows to create and approve pull requests.
+2. A GitHub environment named `npm`, with any required approval rules.
+3. An npm trusted publisher for `@linked365/pptb-metadata-browser`: GitHub owner `LinkeD365`, repository `Metadata-Browser`, workflow filename `release.yml`, and environment `npm`.
+
+No npm token is required; the publishing job uses GitHub OIDC (`id-token: write`). Release Please uses the repository's `GITHUB_TOKEN`. Pull requests created with that token do not automatically trigger other workflows, so manually dispatch CI to verify the release PR branch before merging if required by branch protection.
+
+Workflow execution, release PR creation, and npm authentication must be verified on GitHub after these settings are configured. Local validation does not publish a package.
