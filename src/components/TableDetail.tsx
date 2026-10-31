@@ -630,8 +630,8 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         .filter((attr) => attr.type === selectedValue)
         .map((attr) => attr.attributeName),
     ];
-    const data = selTable.relationships.filter((t) =>
-      selTable.selectedRelationships ? selTable.selectedRelationships.has(t.relationshipName) : false,
+    const data = selTable.relationships.filter(
+      (t) => t.type === selectedValue && selTable.selectedRelationships?.has(t.relationshipName),
     );
     const rows = data.map((rel) => [
       rel.relationshipName,
