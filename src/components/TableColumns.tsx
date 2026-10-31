@@ -7,8 +7,10 @@ import { Spinner, TableRowId, Tooltip, tokens } from "@fluentui/react-components
 import { ColDef, SelectionChangedEvent, RowSelectionOptions, RowStyleModule } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { runReportedOperation } from "../utils/async";
 import {
   createConnectionDisplayColumns,
+  getConnectionDisplayLabel,
   createConnectionRowClassRules,
   loadConnectionRecordSets,
   mergeConnectionRecordSets,
@@ -138,8 +140,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
     if (selectedTable.columns.length > 0) {
       return;
     }
-    try {
-      setLoadingMeta(true);
+    await runReportedOperation(async () => {
       const columnSets = await loadConnectionRecordSets(
         connections,
         (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
@@ -153,13 +154,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         ["displayName"],
       );
       onLog(`Loaded ${selectedTable.columns.length} columns for table: ${table}`, "success");
-    } catch (error) {
-      const errorMsg = `Error loading columns for table ${table}: ${(error as Error).message}`;
-      onLog(errorMsg, "error");
-      await showNotification("Error", errorMsg, "error");
-    } finally {
-      setLoadingMeta(false);
-    }
+    }, setLoadingMeta, onLog, showNotification, "Unable to load columns. Check the connections and permissions, then reopen this tab to retry.");
   }
 
   React.useEffect(() => {
@@ -184,7 +179,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   const colDefs = React.useMemo<ColDef<ColumnMeta>[]>(
     () => [
       {
-        headerName: "Column Name",
+        headerName: getConnectionDisplayLabel(connections[0] ?? null, 0, "Column Name"),
         field: "displayName",
         sort: "asc",
         valueGetter: (params) =>

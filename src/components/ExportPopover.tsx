@@ -17,6 +17,7 @@ import {
 } from "@fluentui/react-components";
 import { ArrowExportUpRegular, Dismiss24Regular, Save16Filled } from "@fluentui/react-icons";
 import { ExcelExport } from "../utils/excelExport";
+import { runReportedOperation } from "../utils/async";
 
 interface ExportPopoverProps {
   connection: ToolBoxAPI.DataverseConnection | null;
@@ -37,18 +38,22 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
   async function exportToExcel(): Promise<void> {
     if (!vm.selectedTables || vm.selectedTables.length == 0) {
       onLog("No tables selected for export.", "warning");
-      window.toolboxAPI.utils.showNotification({
+      await window.toolboxAPI.utils.showNotification({
         title: "Metadata Browser",
         body: "No tables selected for export.",
         type: "info",
       });
+      return;
     }
-    setBlockClose(true);
-    var excelExporter = new ExcelExport({ dvsvc: dvSvc, connection: connection, vm: vm });
-    await excelExporter.export(vm.selectedTables);
-    setBlockClose(false);
-    setIsExportOpen(false);
-    return;
+    const exported = await runReportedOperation(async () => {
+      const excelExporter = new ExcelExport({ dvsvc: dvSvc, connection, vm });
+      await excelExporter.export([...vm.selectedTables]);
+    }, setBlockClose, onLog, async (title, body, type) => {
+      await window.toolboxAPI.utils.showNotification({ title, body, type });
+    }, "Excel export failed. Earlier files may have downloaded; check them before retrying.");
+    if (exported) {
+      setIsExportOpen(false);
+    }
   }
 
   async function saveExportSettings(): Promise<void> {

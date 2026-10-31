@@ -47,6 +47,7 @@ import { BusinessRules } from "./BusinessRules";
 import { ColDef } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { saveCsvFile } from "../utils/csvExport";
 
 interface TableDetailProps {
   connections: Array<ToolBoxAPI.DataverseConnection | null>;
@@ -452,7 +453,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     } catch (error) {
       window.toolboxAPI.utils.showNotification({
         title: "Save Failed",
-        body: `Failed to save default ${selectedValue} attributes. error: ${error}`,
+        body: `Failed to save default ${selectedValue} attributes.`,
         type: "error",
       });
     }
@@ -475,7 +476,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     } catch (error) {
       window.toolboxAPI.utils.showNotification({
         title: "Save Failed",
-        body: `Failed to save default view attributes. error: ${error}`,
+        body: "Failed to save default view attributes.",
         type: "error",
       });
     }
@@ -501,7 +502,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     } catch (error) {
       window.toolboxAPI.utils.showNotification({
         title: "Save Failed",
-        body: `Failed to save default business process flow attributes. error: ${error}`,
+        body: "Failed to save default business process flow attributes.",
         type: "error",
       });
     }
@@ -527,7 +528,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     } catch (error) {
       window.toolboxAPI.utils.showNotification({
         title: "Save Failed",
-        body: `Failed to save default business rule attributes. error: ${error}`,
+        body: "Failed to save default business rule attributes.",
         type: "error",
       });
     }
@@ -540,17 +541,20 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     viewModel.columnAttributes.push({ name: customColName.trim(), custom: true });
     setCustomColName("");
   }
-  function exportTableDetailClick(): void {
+  const saveCsv = (fileName: string, rows: readonly (readonly unknown[])[]) =>
+    saveCsvFile(fileName, rows, (name, content) => window.toolboxAPI.fileSystem.saveFile(name, content),
+      onLog, showNotification);
+
+  async function exportTableDetailClick(): Promise<void> {
     const title = ["Table: ", selTable.primaryDisplayName, selTable.tableName];
     const headers = ["Attribute Name", "Value"];
     const rows = selTable.attributes.map((attr) => [attr.attributeName, attr.attributeValue]);
-    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_metadata.csv`, csvString);
+    await saveCsv(`${selTable.primaryDisplayName}_metadata.csv`, [title, headers, ...rows]);
   }
 
-  function exportColumnsClick(): void {
+  async function exportColumnsClick(): Promise<void> {
     const title = ["Table: ", selTable.primaryDisplayName, selTable.tableName];
-    const headers = ["Column Name", "Logical Name", "Type", ...viewModel.columnAttributes];
+    const headers = ["Column Name", "Logical Name", "Type", ...viewModel.columnAttributes.map((column) => column.name)];
 
     const data = selTable.columns.filter((t) =>
       selTable.selectedColumns ? selTable.selectedColumns.has(t.columnName) : false,
@@ -564,8 +568,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         return attr ? attr.attributeValue : "";
       }),
     ]);
-    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_columns_metadata.csv`, csvString);
+    await saveCsv(`${selTable.primaryDisplayName}_columns_metadata.csv`, [title, headers, ...rows]);
   }
 
   async function openTableSectionInBrowser(pathSuffix: string, sectionName: string): Promise<void> {
@@ -585,9 +588,9 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     try {
       const tableUrl = await dvService.getTableBrowserUrl(selTable.metaId, pathSuffix, connectionTarget);
       await toolboxUtils.openInConnectionBrowser(tableUrl, connectionTarget);
-    } catch (error) {
-      const message = (error as Error).message || "Unknown error";
-      onLog(`Failed to open ${sectionName} for table ${selTable.tableName}: ${message}`, "error");
+    } catch {
+      onLog("Unable to open the table section in its source environment.", "error");
+      await showNotification("Browser navigation failed", "Check the connection and reopen the table section.", "error");
     }
   }
 
@@ -595,7 +598,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     await openTableSectionInBrowser("/fields", "columns");
   }
 
-  function exportSolutionsClick(): void {
+  async function exportSolutionsClick(): Promise<void> {
     const title = ["Table:", selTable.primaryDisplayName, selTable.tableName];
     const headers = ["Solution Name", "Unique Name", "Version", "Is Managed", "Description", "Root Component Behavior"];
     const data = selTable.solutions.map((solution) => [
@@ -607,20 +610,18 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       solution.subcomponents ? "Yes" : "No",
     ]);
     const rows = data;
-    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_solutions_metadata.csv`, csvString);
+    await saveCsv(`${selTable.primaryDisplayName}_solutions_metadata.csv`, [title, headers, ...rows]);
   }
 
-  function exportPrivilegesClick(): void {
+  async function exportPrivilegesClick(): Promise<void> {
     const title = ["Table: ", selTable.primaryDisplayName, selTable.tableName];
     const headers = ["Privilege Name", ...(selTable.privileges[0]?.attributes.map((attr) => attr.attributeName) || [])];
     const data = selTable.privileges;
     const rows = data.map((priv) => [priv.privilegeName, ...priv.attributes.map((attr) => attr.attributeValue)]);
-    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_privileges_metadata.csv`, csvString);
+    await saveCsv(`${selTable.primaryDisplayName}_privileges_metadata.csv`, [title, headers, ...rows]);
   }
 
-  function exportRelationshipClick(): void {
+  async function exportRelationshipClick(): Promise<void> {
     const title = ["Table: ", selTable.primaryDisplayName, selTable.tableName, "Relationship Types: ", selectedValue];
     const headers = [
       "Relationship Name",
@@ -629,8 +630,8 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
         .filter((attr) => attr.type === selectedValue)
         .map((attr) => attr.attributeName),
     ];
-    const data = selTable.relationships.filter((t) =>
-      selTable.selectedRelationships ? selTable.selectedRelationships.has(t.relationshipName) : false,
+    const data = selTable.relationships.filter(
+      (t) => t.type === selectedValue && selTable.selectedRelationships?.has(t.relationshipName),
     );
     const rows = data.map((rel) => [
       rel.relationshipName,
@@ -642,8 +643,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           return attr ? attr.attributeValue : "";
         }),
     ]);
-    const csvString = [title, headers, ...rows].map((row) => row.join(",")).join("\n");
-    window.toolboxAPI.fileSystem.saveFile(`${selTable.primaryDisplayName}_${selectedValue}_metadata.csv`, csvString);
+    await saveCsv(`${selTable.primaryDisplayName}_${selectedValue}_metadata.csv`, [title, headers, ...rows]);
   }
 
   const columnDrawer = (

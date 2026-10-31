@@ -7,8 +7,10 @@ import { Spinner } from "@fluentui/react-components";
 import { ColDef, RowStyleModule } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
+import { runReportedOperation } from "../utils/async";
 import {
   createConnectionDisplayColumns,
+  getConnectionDisplayLabel,
   createConnectionRowClassRules,
   loadConnectionRecordSets,
   mergeConnectionRecordSets,
@@ -40,21 +42,21 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
       return;
     }
 
-    setLoadingMeta(true);
-    const privilegeSets = await loadConnectionRecordSets(
-      connections,
-      (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
-      (index) => dvService.getPrivilegesMetadata(selectedTable, index),
-      (privilege) => privilege.privilegeName,
-    );
+    await runReportedOperation(async () => {
+      const privilegeSets = await loadConnectionRecordSets(
+        connections,
+        (index) => selectedTable.connectionPresence[index] ?? (index === 0 ? selectedTable.hasPrimaryConnection : index === 1 && selectedTable.hasSecondaryConnection),
+        (index) => dvService.getPrivilegesMetadata(selectedTable, index),
+        (privilege) => privilege.privilegeName,
+      );
 
-    selectedTable.privileges = mergeConnectionRecordSets(
-      privilegeSets,
-      (privilege) => privilege.privilegeName,
-      ["privilegeName"],
-    );
-    onLog(`Loaded ${selectedTable.privileges.length} privileges for table: ${selectedTable.tableName}`, "success");
-    setLoadingMeta(false);
+      selectedTable.privileges = mergeConnectionRecordSets(
+        privilegeSets,
+        (privilege) => privilege.privilegeName,
+        ["privilegeName"],
+      );
+      onLog(`Loaded ${selectedTable.privileges.length} privileges for table: ${selectedTable.tableName}`, "success");
+    }, setLoadingMeta, onLog, showNotification, "Unable to load privileges. Check the connections and permissions, then reopen this tab to retry.");
     return;
   }
 
@@ -88,7 +90,7 @@ export const Privileges = observer((props: PrivilegesProps): React.JSX.Element =
   const colDefs = React.useMemo<ColDef<PrivilegeMeta>[]>(
     () => [
       {
-        headerName: "Privilege Name",
+        headerName: getConnectionDisplayLabel(connections[0] ?? null, 0, "Privilege Name"),
         field: "privilegeName",
         flex: 2,
         sort: "asc",

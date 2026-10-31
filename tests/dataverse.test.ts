@@ -104,6 +104,14 @@ describe("dvService solution metadata", () => {
     await expect(service.getSolutionTables("solution")).rejects.toThrow("No connection available");
   });
 
+  it("reports solution components that have no usable table identifier", async () => {
+    const { service, onLog } = createService(
+      async () => ({ value: [] }), vi.fn(), async () => ({ value: [{ objectid: null }] }),
+    );
+    expect(await service.getSolutionTables("solution")).toEqual([]);
+    expect(onLog).toHaveBeenCalledWith("A solution component did not contain a usable table identifier.", "warning");
+  });
+
   it("targets each of four connected environments by its numeric slot", async () => {
     const targets: number[] = [];
     const connections = Array.from({ length: 4 }, (_, index) => ({

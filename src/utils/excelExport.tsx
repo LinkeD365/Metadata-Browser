@@ -1,6 +1,7 @@
 import { TableMeta } from "../model/tableMeta";
 import { ViewModel } from "../model/ViewModel";
 import { dvService } from "./dataverse";
+import type { Row, Workbook, Worksheet } from "exceljs";
 
 interface ExcelExportProps {
   dvsvc: dvService;
@@ -21,20 +22,27 @@ export class ExcelExport {
 
   async export(tables: TableMeta[]): Promise<void> {
     const excelModule = await import("exceljs");
-    const ExcelJS = (excelModule as any).default ?? excelModule;
+    const ExcelJS = excelModule.default;
 
-    for (const table of tables) {
+    const options = { ...this.vm.excelOptions };
+    for (const selectedTable of tables) {
+      const table = Object.assign(new TableMeta(), {
+        tableName: selectedTable.tableName,
+        primaryDisplayName: selectedTable.primaryDisplayName,
+        metaId: selectedTable.metaId,
+        attributes: selectedTable.attributes.map((attribute) => ({ ...attribute })),
+      });
       const workbook = new ExcelJS.Workbook();
 
-      if (this.vm.excelOptions.includeTableDetails) {
+      if (options.includeTableDetails) {
         this.addTableDetailsSheet(workbook, table);
       }
 
-      if (this.vm.excelOptions.includeColumns) await this.addColumnsSheet(workbook, table);
-      if (this.vm.excelOptions.includeKeys) await this.addKeysSheet(workbook, table);
-      if (this.vm.excelOptions.includePrivileges) await this.addPrivilegesSheet(workbook, table);
-      if (this.vm.excelOptions.includeRelationships) await this.addRelationshipsSheet(workbook, table);
-      if (this.vm.excelOptions.includeSolutions) await this.addSolutionsSheet(workbook, table);
+      if (options.includeColumns) await this.addColumnsSheet(workbook, table);
+      if (options.includeKeys) await this.addKeysSheet(workbook, table);
+      if (options.includePrivileges) await this.addPrivilegesSheet(workbook, table);
+      if (options.includeRelationships) await this.addRelationshipsSheet(workbook, table);
+      if (options.includeSolutions) await this.addSolutionsSheet(workbook, table);
 
       const fileName = `${table.primaryDisplayName}.xlsx`;
       const buffer = await workbook.xlsx.writeBuffer();
@@ -44,7 +52,7 @@ export class ExcelExport {
       this.downloadBlob(blob, fileName);
     }
   }
-  async addKeysSheet(workbook: any, table: TableMeta) {
+  async addKeysSheet(workbook: Workbook, table: TableMeta) {
     const sheet = workbook.addWorksheet("Keys");
     if (!table.keys || table.keys.length === 0) {
       await this.dvsvc.getKeysMeta(table).then((keys) => {
@@ -63,7 +71,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private addTableDetailsSheet(workbook: any, table: TableMeta): void {
+  private addTableDetailsSheet(workbook: Workbook, table: TableMeta): void {
     const sheet = workbook.addWorksheet("Table Details");
     sheet.addRow(["Table Name", table.tableName]);
     sheet.addRow(["Display Name", table.primaryDisplayName]);
@@ -74,7 +82,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addColumnsSheet(workbook: any, table: TableMeta): Promise<void> {
+  private async addColumnsSheet(workbook: Workbook, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Columns");
     if (!table.columns || table.columns.length === 0) {
       await this.dvsvc.getColumnsMeta(table.tableName).then((columns) => {
@@ -97,7 +105,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addPrivilegesSheet(workbook: any, table: TableMeta): Promise<void> {
+  private async addPrivilegesSheet(workbook: Workbook, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Privileges");
     if (!table.privileges || table.privileges.length === 0) {
       await this.dvsvc.getPrivilegesMetadata(table).then((privileges) => {
@@ -116,7 +124,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addSolutionsSheet(workbook: any, table: TableMeta): Promise<void> {
+  private async addSolutionsSheet(workbook: Workbook, table: TableMeta): Promise<void> {
     const sheet = workbook.addWorksheet("Solutions");
     if (!table.solutions || table.solutions.length === 0) {
       await this.dvsvc.getSolutionsForTable(table).then((solutions) => {
@@ -151,7 +159,7 @@ export class ExcelExport {
     this.styleSheet(sheet);
   }
 
-  private async addRelationshipsSheet(workbook: any, table: TableMeta): Promise<void> {
+  private async addRelationshipsSheet(workbook: Workbook, table: TableMeta): Promise<void> {
     const relTypes = ["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"];
     for (const type of relTypes) {
       const sheet = workbook.addWorksheet(type);
@@ -161,7 +169,7 @@ export class ExcelExport {
         });
       }
       if (table.relationships.filter((r) => r.type === type).length === 0) {
-        return;
+        continue;
       }
       sheet.addRow([
         "Relationship Name",
@@ -185,7 +193,6 @@ export class ExcelExport {
       this.styleSheet(sheet);
     }
   }
-  // Stolen from @Power-Maverick
   private downloadBlob(blob: Blob, fileName: string): void {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -194,17 +201,24 @@ export class ExcelExport {
     link.setAttribute("download", fileName);
     link.style.visibility = "hidden";
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
+    let attached = false;
+    try {
+      document.body.appendChild(link);
+      attached = true;
+      link.click();
+    } finally {
+      try {
+        if (attached) document.body.removeChild(link);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
   }
-  private styleSheet(sheet: any): void {
+  private styleSheet(sheet: Worksheet): void {
     this.styleHeaderRow(sheet.getRow(1));
     this.applyAlternatingRowFill(sheet, 1);
   }
-  private styleHeaderRow(row: any): void {
+  private styleHeaderRow(row: Row): void {
     row.font = { bold: true, color: { argb: "FFFFFFFF" } };
     row.fill = {
       type: "pattern",
@@ -215,8 +229,8 @@ export class ExcelExport {
     row.height = 20;
   }
 
-  private applyAlternatingRowFill(worksheet: any, headerRowIndex = 1): void {
-    worksheet.eachRow((row: any, rowNumber: number) => {
+  private applyAlternatingRowFill(worksheet: Worksheet, headerRowIndex = 1): void {
+    worksheet.eachRow((row, rowNumber) => {
       if (rowNumber > headerRowIndex && rowNumber % 2 === 0) {
         row.fill = {
           type: "pattern",
