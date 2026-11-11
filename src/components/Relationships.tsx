@@ -24,16 +24,14 @@ interface RelationshipsProps {
   isLoading: boolean;
   selectedTable: TableMeta;
   type: string;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
 export const Relationships = observer((props: RelationshipsProps): React.JSX.Element => {
-  const { connections, dvService, onLog, selectedTable, showNotification, type, viewModel } = props;
+  const { connections, dvService, selectedTable, showNotification, type, viewModel } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
-    onLog(`Loading Relationships for table: ${selectedTable.tableName}`, "info");
     if (selectedTable && selectedTable.relationships.filter((r) => r.type === type).length === 0) {
       getRelationshipMeta();
     }
@@ -58,11 +56,7 @@ export const Relationships = observer((props: RelationshipsProps): React.JSX.Ele
       );
       selectedTable.relationships = selectedTable.relationships
         .filter((relationship) => relationship.type !== type).concat(relationships);
-      onLog(
-        `Loaded ${relationships.length} relationships for table: ${selectedTable.tableName}`,
-        "success",
-      );
-    }, setLoadingMeta, onLog, showNotification, "Unable to load relationships. Check the connections and permissions, then reopen this tab to retry.");
+    }, setLoadingMeta, showNotification, "Unable to load relationships. Check the connections and permissions, then reopen this tab to retry.");
     return;
   }
 

@@ -15,5 +15,5 @@ if (rootElement && !rootElement.hasAttribute("data-reactroot-initialized")) {
     </StrictMode>
   );
 } else if (!rootElement) {
-  console.error('Root element not found. Make sure the HTML contains <div id="root"></div>');
+  throw new Error('Root element not found. Make sure the HTML contains <div id="root"></div>');
 }

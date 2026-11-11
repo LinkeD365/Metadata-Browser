@@ -38,11 +38,13 @@ Dataverse requests use Power Platform ToolBox's authenticated APIs. This tool do
 
 ## Troubleshooting
 
-If loading fails, check the notification and event log, reconnect or correct permissions, then reopen the affected metadata tab. For the table list, select the solution or **All Tables** again. Empty results are valid; unavailable permissions or failed paging are reported rather than treated as empty results.
+If loading fails, check the notification and the main Power Platform ToolBox host log, reconnect or correct permissions, then reopen the affected metadata tab. For the table list, select the solution or **All Tables** again. Empty results are valid; unavailable permissions or failed paging are reported rather than treated as empty results. The tool does not maintain a separate event log.
 
-If Excel export fails, controls become available again. Earlier workbooks may already have downloaded; check those files before retrying. Cancelled CSV save dialogs are logged as cancellation, not success.
+If Excel export fails, controls become available again. Earlier workbooks may already have downloaded; check those files before retrying. Cancelling a CSV save dialog produces no success or error notification.
 
 ## Latest
+11/11/26 - Removed the tool's event log and logging callbacks; diagnostics rely on the main ToolBox host log. Kept error notifications and added host warnings for incomplete solution results and actions that previously reported only to the local log.
+
 31/10/26 - Added bounded metadata paging, per-environment comparison targeting, tenant-data protection, and four-environment comparison using current connection settings. Solution selection and the table-list baseline come from the primary connection. Updated the tool logo and screenshot. All comparison grids use field-title prefixes and configured environment names, such as `Table Name (Development)`. Added visible error logging, export failure recovery, safely quoted CSV exports, primary-only Excel workbooks, and a manual acceptance checklist.
 20/5/26 - Added open in links, Views, BPFs, Business Rules
 20/1/26 - Added Export to Excel

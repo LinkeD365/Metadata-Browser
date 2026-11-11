@@ -31,7 +31,7 @@ function captureDownloads(click = vi.fn()) {
   const service = new dvService({
     connections: [connection],
     dvApi: { queryData: async () => ({ value: [] }), fetchXmlQuery: async () => ({ value: [] }) },
-    onLog: vi.fn(),
+    onWarning: vi.fn().mockResolvedValue(undefined),
   });
   return { blobs, service, revoke, removeChild };
 }
@@ -68,7 +68,7 @@ describe("ExcelExport", () => {
     const service = new dvService({
       connections: [connection],
       dvApi: api,
-      onLog: vi.fn(),
+      onWarning: vi.fn().mockResolvedValue(undefined),
     });
     const vm = new ViewModel();
     vm.excelOptions.includeColumns = false;

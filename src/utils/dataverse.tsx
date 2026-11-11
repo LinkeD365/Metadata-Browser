@@ -36,19 +36,19 @@ interface RetrieveCurrentOrganizationResponse {
 interface dvServiceProps {
   connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvApi: Pick<DataverseAPI.API, "queryData" | "fetchXmlQuery">;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
+  onWarning: (message: string) => Promise<void>;
 }
 export class dvService {
   connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvApi: Pick<DataverseAPI.API, "queryData" | "fetchXmlQuery">;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
+  private onWarning: (message: string) => Promise<void>;
   private cachedEnvironmentIds = new Map<number, string>();
   private environmentIdRequests = new Map<number, Promise<string>>();
 
   constructor(props: dvServiceProps) {
     this.connections = props.connections;
     this.dvApi = props.dvApi;
-    this.onLog = props.onLog;
+    this.onWarning = props.onWarning;
   }
 
   private resolveConnection(connectionTarget: number) {
@@ -156,7 +156,6 @@ export class dvService {
   /// @returns Promise<TableMeta[]> - A promise that resolves to an array of TableMeta
   /// @todo : Need to swap back to toolbox code when fixed
   async getAllTables(connectionTarget = 0): Promise<TableMeta[]> {
-    this.onLog("Fetching table metadata...", "info");
     const connection = this.resolveConnection(connectionTarget);
     if (!connection) {
       throw new Error("No connection available");
@@ -195,7 +194,6 @@ export class dvService {
   // @param table - The logical name of the table
   // @returns Promise<ColumnMeta[]> - A promise that resolves to an array of ColumnMeta
   async getColumnsMeta(table: string, connectionTarget = 0): Promise<ColumnMeta[]> {
-    this.onLog(`Fetching column metadata for table: ${table}`, "info");
     const connection = this.resolveConnection(connectionTarget);
     if (!connection) {
       throw new Error("No connection available");
@@ -229,13 +227,11 @@ export class dvService {
       });
       return columnMetaList;
     } catch (error) {
-      this.onLog("Unable to load column metadata from the selected environment.", "error");
       throw error;
     }
   }
 
   async getSolutions(managed: boolean, connectionTarget = 0): Promise<Solution[]> {
-    this.onLog("Fetching solutions...", "info");
     const connection = this.resolveConnection(connectionTarget);
     if (!connection) {
       throw new Error("No connection available");
@@ -262,7 +258,6 @@ export class dvService {
     solutionUniqueName: string,
     connectionTarget = 0,
   ): Promise<TableMeta[]> {
-    this.onLog("Fetching tables for the selected solution...", "info");
     const connection = this.resolveConnection(connectionTarget);
     if (!connection) {
       throw new Error("No connection available");
@@ -295,7 +290,6 @@ export class dvService {
         async (comp) => {
           const objectId = getSolutionComponentObjectId(comp);
           if (!objectId) {
-            this.onLog("A solution component did not contain a usable table identifier.", "warning");
             return null;
           }
           try {
@@ -328,15 +322,17 @@ export class dvService {
 
             return tm;
           } catch {
-            this.onLog("Failed to fetch metadata for a table in the selected solution.", "warning");
             return null;
           }
         },
       );
 
-      return solutionTables.filter((table): table is TableMeta => table !== null);
+      const tables = solutionTables.filter((table): table is TableMeta => table !== null);
+      if (tables.length !== solutionTables.length) {
+        await this.onWarning("Some tables in the selected solution could not be loaded. Results are incomplete; check access and reload the solution.");
+      }
+      return tables;
     } catch (error) {
-      this.onLog("Unable to load table metadata for the selected solution.", "error");
       throw error;
     }
   }
@@ -351,7 +347,6 @@ export class dvService {
     }
 
     if (!logicalName?.trim()) {
-      this.onLog("A table logical name is required to resolve metadata.", "error");
       throw new Error("Table logical name is required");
     }
 
@@ -387,7 +382,6 @@ export class dvService {
 
       return tm;
     } catch (error) {
-      this.onLog("Unable to resolve table metadata in the selected environment.", "error");
       throw error;
     }
   }
@@ -401,7 +395,6 @@ export class dvService {
       throw new Error("No connection available");
     }
     try {
-      this.onLog(`Fetching keys metadata for table: ${selectedTable.tableName}`, "info");
       const meta = await this.queryCollection(
         `EntityDefinitions(LogicalName='${selectedTable.tableName.replace(/'/g, "''")}')/Keys`, connectionTarget,
       );
@@ -428,10 +421,6 @@ export class dvService {
       });
       return keyMetaList;
     } catch (err) {
-      this.onLog(
-        "Unable to load key metadata from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }
@@ -445,7 +434,6 @@ export class dvService {
       throw new Error("No connection available");
     }
     try {
-      this.onLog(`Fetching privileges metadata for table: ${selectedTable.tableName}`, "info");
       const meta = await this.queryCollection(
         `EntityDefinitions(LogicalName='${selectedTable.tableName.replace(/'/g, "''")}')/Privileges`, connectionTarget,
       );
@@ -472,10 +460,6 @@ export class dvService {
       });
       return keyMetaList;
     } catch (err) {
-      this.onLog(
-        "Unable to load privilege metadata from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }
@@ -490,7 +474,6 @@ export class dvService {
       throw new Error("No connection available");
     }
     try {
-      this.onLog(`Fetching relationships metadata for table: ${selectedTable.tableName} type: ${type}`, "info");
       if (!["OneToManyRelationship", "ManyToOneRelationship", "ManyToManyRelationship"].includes(type)) {
         throw new Error("Unsupported relationship type");
       }
@@ -521,10 +504,6 @@ export class dvService {
       });
       return relationships;
     } catch (err) {
-      this.onLog(
-        "Unable to load relationship metadata from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }
@@ -538,7 +517,6 @@ export class dvService {
       throw new Error("No connection available");
     }
     try {
-      this.onLog(`Fetching solutions metadata for table: ${selectedTable.tableName}`, "info");
 
       const targetTable = await this.getTableByLogicalName(selectedTable.tableName, connectionTarget);
       if (!targetTable?.metaId) {
@@ -599,10 +577,6 @@ export class dvService {
       });
       return solutions;
     } catch (err) {
-      this.onLog(
-        "Unable to load solution membership from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }
@@ -617,7 +591,6 @@ export class dvService {
     }
 
     try {
-      this.onLog(`Fetching views metadata for table: ${selectedTable.tableName}`, "info");
 
       const systemViewsQuery = "savedqueries?$filter=returnedtypecode eq '" + selectedTable.tableName.replace(/'/g, "''") + "'";
 
@@ -678,10 +651,6 @@ export class dvService {
 
       return [...systemViews, ...personalViews];
     } catch (err) {
-      this.onLog(
-        "Unable to load view metadata from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }
@@ -696,7 +665,6 @@ export class dvService {
     }
 
     try {
-      this.onLog(`Fetching business process flows for table: ${selectedTable.tableName}`, "info");
 
       const bpfQuery = "workflows?$filter=category eq 4 and primaryentity eq '" + selectedTable.tableName.replace(/'/g, "''") + "'";
 
@@ -728,10 +696,6 @@ export class dvService {
 
       return flows;
     } catch (err) {
-      this.onLog(
-        "Unable to load business process flows from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }
@@ -746,7 +710,6 @@ export class dvService {
     }
 
     try {
-      this.onLog(`Fetching business rules for table: ${selectedTable.tableName}`, "info");
 
       const businessRulesQuery =
         "workflows?$filter=category eq 2 and primaryentity eq '" + selectedTable.tableName.replace(/'/g, "''") + "'";
@@ -779,10 +742,6 @@ export class dvService {
 
       return rules;
     } catch (err) {
-      this.onLog(
-        "Unable to load business rules from the selected environment.",
-        "error",
-      );
       throw err;
     }
   }

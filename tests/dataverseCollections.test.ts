@@ -8,10 +8,11 @@ function setup() {
   }));
   const queryData = vi.fn<DataverseAPI.API["queryData"]>().mockResolvedValue({ value: [] });
   const fetchXmlQuery = vi.fn<DataverseAPI.API["fetchXmlQuery"]>().mockResolvedValue({ value: [] });
-  const onLog = vi.fn();
-  const service = new dvService({ connections, dvApi: { queryData, fetchXmlQuery }, onLog });
+  const service = new dvService({
+    connections, dvApi: { queryData, fetchXmlQuery }, onWarning: vi.fn().mockResolvedValue(undefined),
+  });
   const table = Object.assign(new TableMeta(), { tableName: "custom_table", metaId: "primary-id" });
-  return { service, queryData, fetchXmlQuery, onLog, table };
+  return { service, queryData, fetchXmlQuery, table };
 }
 
 describe("Dataverse comparison requests", () => {
@@ -42,11 +43,10 @@ describe("Dataverse comparison requests", () => {
   });
 
   it("reports resolution failures without hiding missing permissions as empty results", async () => {
-    const { service, queryData, fetchXmlQuery, table, onLog } = setup();
+    const { service, queryData, fetchXmlQuery, table } = setup();
     queryData.mockRejectedValue(new Error("Sensitive permission details"));
     await expect(service.getSolutionsForTable(table, 2)).rejects.toThrow("Sensitive permission details");
     expect(fetchXmlQuery).not.toHaveBeenCalled();
-    expect(onLog).toHaveBeenCalledWith("Unable to resolve table metadata in the selected environment.", "error");
   });
 
   it("rejects unsupported relationship types before issuing a query", async () => {

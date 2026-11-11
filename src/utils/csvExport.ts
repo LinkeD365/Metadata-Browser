@@ -12,15 +12,12 @@ export async function saveCsvFile(
   fileName: string,
   rows: readonly (readonly unknown[])[],
   saveFile: (fileName: string, content: string) => Promise<string | null>,
-  onLog: (message: string, type: "info" | "success" | "error") => void,
   notify: (title: string, message: string, type: "error") => void | Promise<void>,
 ): Promise<void> {
   try {
-    const savedPath = await saveFile(fileName, serializeCsv(rows));
-    onLog(savedPath ? "CSV export saved." : "CSV export cancelled.", savedPath ? "success" : "info");
+    await saveFile(fileName, serializeCsv(rows));
   } catch {
     const message = "Unable to save CSV export. Check the destination and retry.";
-    onLog(message, "error");
     await notify("Export failed", message, "error");
   }
 }

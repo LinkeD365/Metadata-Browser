@@ -22,12 +22,11 @@ interface ViewsProps {
   isLoading: boolean;
   selectedTable: TableMeta;
   viewAttributes: string[];
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
 export const Views = observer((props: ViewsProps): React.JSX.Element => {
-  const { connections, dvService, onLog, selectedTable, showNotification, viewAttributes } = props;
+  const { connections, dvService, selectedTable, showNotification, viewAttributes } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   const filteredViews = React.useMemo(() => {
@@ -42,7 +41,6 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
   }, [selectedTable.viewSearch, selectedTable.views]);
 
   React.useEffect(() => {
-    onLog(`Loading views for table: ${selectedTable.tableName}`, "info");
     if (selectedTable && selectedTable.views?.length === 0) {
       getViews();
     }
@@ -67,8 +65,7 @@ export const Views = observer((props: ViewsProps): React.JSX.Element => {
         (view) => `${view.type}:${view.viewName}`,
         ["viewName"],
       );
-      onLog(`Loaded ${selectedTable.views.length} views for table: ${selectedTable.tableName}`, "success");
-    }, setLoadingMeta, onLog, showNotification, "Unable to load views. Check the connections and permissions, then reopen this tab to retry.");
+    }, setLoadingMeta, showNotification, "Unable to load views. Check the connections and permissions, then reopen this tab to retry.");
   }
 
   const defaultColDefs = React.useMemo<ColDef<ViewMeta>>(() => {

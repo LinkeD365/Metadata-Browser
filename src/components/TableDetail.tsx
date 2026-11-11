@@ -56,7 +56,6 @@ interface TableDetailProps {
   viewModel: ViewModel;
   table: string;
   selectedTable: string;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
@@ -64,7 +63,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   const {
     connections,
     dvService,
-    onLog,
     viewModel,
     table,
     selectedTable,
@@ -543,7 +541,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }
   const saveCsv = (fileName: string, rows: readonly (readonly unknown[])[]) =>
     saveCsvFile(fileName, rows, (name, content) => window.toolboxAPI.fileSystem.saveFile(name, content),
-      onLog, showNotification);
+      showNotification);
 
   async function exportTableDetailClick(): Promise<void> {
     const title = ["Table: ", selTable.primaryDisplayName, selTable.tableName];
@@ -579,7 +577,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
     }
 
     if (!selTable.metaId) {
-      onLog(`Cannot open ${sectionName} for table ${selTable.tableName}: missing table metadata ID.`, "warning");
+      await showNotification("Cannot open table section", `The table metadata ID is missing. Reload the table before opening ${sectionName}.`, "warning");
       return;
     }
 
@@ -589,7 +587,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
       const tableUrl = await dvService.getTableBrowserUrl(selTable.metaId, pathSuffix, connectionTarget);
       await toolboxUtils.openInConnectionBrowser(tableUrl, connectionTarget);
     } catch {
-      onLog("Unable to open the table section in its source environment.", "error");
       await showNotification("Browser navigation failed", "Check the connection and reopen the table section.", "error");
     }
   }
@@ -1212,7 +1209,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 isLoading={isLoading}
                 viewModel={viewModel}
                 table={table}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}
@@ -1222,7 +1218,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}
@@ -1232,7 +1227,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
-                onLog={onLog}
                 showNotification={showNotification}
                 type="OneToManyRelationship"
                 viewModel={viewModel}
@@ -1244,7 +1238,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
-                onLog={onLog}
                 showNotification={showNotification}
                 type="ManyToOneRelationship"
                 viewModel={viewModel}
@@ -1256,7 +1249,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
-                onLog={onLog}
                 showNotification={showNotification}
                 type="ManyToManyRelationship"
                 viewModel={viewModel}
@@ -1268,7 +1260,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}
@@ -1278,7 +1269,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 dvService={dvService}
                 isLoading={isLoading}
                 selectedTable={selTable}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}
@@ -1289,7 +1279,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 isLoading={isLoading}
                 selectedTable={selTable}
                 viewAttributes={viewModel.viewAttributes}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}
@@ -1300,7 +1289,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 isLoading={isLoading}
                 selectedTable={selTable}
                 businessProcessFlowAttributes={viewModel.businessProcessFlowAttributes}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}
@@ -1311,7 +1299,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
                 isLoading={isLoading}
                 selectedTable={selTable}
                 businessRuleAttributes={viewModel.businessRuleAttributes}
-                onLog={onLog}
                 showNotification={showNotification}
               />
             )}

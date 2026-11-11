@@ -7,7 +7,7 @@ function createService(connections: Array<ToolBoxAPI.DataverseConnection | null>
   const service = new dvService({
     connections,
     dvApi: { queryData, fetchXmlQuery: async () => ({ value: [] }) },
-    onLog: vi.fn(),
+    onWarning: vi.fn().mockResolvedValue(undefined),
   });
   return { service, queryData };
 }

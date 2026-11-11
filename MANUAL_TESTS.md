@@ -31,7 +31,7 @@ For each item, tick only after checking its expected result. Record failures and
 - [x] **C04 - Primary-only solution:** Select a solution that exists only in primary. Comparison still loads matching tables by logical name from the other environments.
 - [x] **C05 - Empty baseline:** Select an empty solution or an environment with no matching tables. Show an understandable empty state without loading unrelated comparison-only tables.
 - [x] **C06 - Connection replacement during a read:** Start a slow metadata load, then change/remove a connection. Old detail tabs and selections are cleared; results from the previous selection do not repopulate the current table list or get exported as current data.
-- [x] **C07 - Connection failure and retry:** Disconnect/expire the primary connection. A visible notification/log entry explains the failure. Restore access and reload; loading indicators stop and the tool becomes usable.
+- [ ] **C07 - Connection failure and retry:** Disconnect/expire the primary connection. A visible host notification explains the failure. Restore access and reload; loading indicators stop and the tool becomes usable.
 
 ## Every comparison grid
 
@@ -50,7 +50,7 @@ Repeat the next four checks for **Tables, Columns, Keys, Privileges, Solutions, 
 - [x] **L01 - OData paging:** Use collections spanning more than one response page, including solutions, views/workflows and metadata where available. Compare complete counts and late-page records with a trusted source.
 - [x] **L02 - FetchXML paging:** Test a solution with more than 5,000 components or membership rows where available. Confirm later pages appear, requests remain bounded and UI remains responsive.
 - [x] **L03 - Paging limit:** If feasible in an authorized test harness/fixture, test repeated/invalid continuations and supported paging limits. A failure is visible rather than a success-shaped truncated result; no continuation is sent to another origin. Otherwise attach automated regression evidence and state why a live fixture is unavailable.
-- [x] **L04 - Partial component failure:** Make one solution table inaccessible. The failure is visible in the event log, successful table reads remain ordered and the result is understood to be partial.
+- [ ] **L04 - Partial component failure:** Make one solution table inaccessible or return a component without a usable identifier. One host warning identifies the results as incomplete, and successful table reads remain ordered.
 - [x] **L05 - Missing permissions:** Restrict access to each detail category in turn. A visible error identifies the category, loading stops, and reopening the tab after restoring permissions succeeds.
 - [x] **L06 - Empty results:** Test tables with no keys, privileges, views, BPFs, business rules or relationship types. Empty states are distinct from request failures and controls remain usable.
 - [x] **L07 - Timeout/rate limit:** Exercise a transient timeout or throttling response. No unbounded retry loop occurs; failure is reported and the user can retry deliberately.
@@ -59,21 +59,21 @@ Repeat the next four checks for **Tables, Columns, Keys, Privileges, Solutions, 
 
 - [x] **E01 - CSV selections:** Export the table list, details, selected columns, selected relationships, solutions and privileges. File rows/headers match the current selection and selected attributes.
 - [x] **E02 - CSV text safety:** Include commas, quotes, line breaks and formula-like text (`=`, `+`, `-`, `@`) in authorized fixture labels/descriptions. Open in a spreadsheet and a text editor; fields remain aligned and formula-like values are text, not executed formulas.
-- [x] **E03 - CSV cancel/failure:** Cancel the save dialog and simulate an unwritable destination. Cancellation is not reported as success; write failure produces a notification/log entry and permits retry.
+- [ ] **E03 - CSV cancel/failure:** Cancel the save dialog and simulate an unwritable destination. Cancellation produces no success/error notification; write failure produces a host notification and permits retry.
 - [x] **E04 - Excel options:** Exercise every workbook option and multiple selected tables. Open the resulting workbooks in Excel and verify worksheet names, headers, cell values and formatting.
 - [x] **E05 - Primary-only Excel:** Load comparison grids before exporting, including comparison-only detail records. Excel contains freshly read primary metadata, not mixed comparison caches. Compare exports with and without previously opening those grids.
 - [x] **E06 - Empty relationship directions:** Export all relationship directions where the first direction is empty but a later one has records. Later worksheets are still populated.
 - [x] **E07 - Excel failure/partial completion:** Fail a read or download midway through a multiple-table export. Controls become enabled, the drawer stays available, and the message warns that earlier files may exist. Check those files before retrying.
 - [x] **E08 - Explicit writes only:** Loading/searching/changing tabs creates no exports and performs no Dataverse writes. Only explicit export/default actions write files/preferences.
 - [x] **E09 - Defaults:** Save table columns, column/relationship/view/BPF/business-rule attributes and Excel defaults. Reopen the tool; saved preferences apply. Changing and re-saving defaults replaces them.
-- [x] **E10 - Preference failure:** In an authorized local test profile, provide invalid saved JSON or simulate a settings failure. A notification/log entry appears and preferences can be reviewed and corrected without exposing settings contents.
+- [ ] **E10 - Preference failure:** In an authorized local test profile, provide invalid saved JSON or simulate a settings failure. A host notification appears and preferences can be reviewed and corrected without exposing settings contents.
 
 ## Theme, accessibility and privacy
 
-- [x] **U01 - Both themes:** Run all major screens in light and dark themes, including drawers, dropdowns, comparison highlights, empty states, notifications and event log. Text/icons stay legible.
+- [ ] **U01 - Both themes:** Run all major screens in light and dark themes, including drawers, dropdowns, comparison highlights, empty states and notifications. Text/icons stay legible.
 - [x] **U02 - Live theme switching:** Change PPTB theme while the tool is open. Fluent controls, AG Grid and portals update without broken layout.
 - [x] **U03 - Keyboard/layout:** Navigate selection, search, menus, drawers, exports and tabs using the keyboard. Focus and accessible labels remain useful at common window sizes and display scaling.
-- [x] **U04 - Event log:** Confirm success/warning/error entries appear, only the latest 50 are retained and Clear works. Request response bodies, export contents and tokens do not appear in console output or notifications.
+- [ ] **U04 - Host diagnostics:** Confirm there is no tool-local event log or Clear button. Use the main PPTB host log for diagnostics. Error/warning notifications remain visible, including missing table metadata IDs and saving an empty solution selection. Request response bodies, export contents and tokens do not appear in tool console output or notifications.
 - [x] **U05 - Network:** Inspect Tool DevTools while loading/exporting. Reads stay within host-authenticated Dataverse APIs; there is no publisher telemetry or upload. Maker navigation goes only to the expected Microsoft portal.
 - [x] **U06 - CSP:** With PPTB's normal CSP unchanged, verify Excel creation/download works without `eval`/dynamic-code permission or additional network exceptions.
 
