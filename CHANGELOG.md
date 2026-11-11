@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/LinkeD365/Metadata-Browser/compare/1.0.1...1.0.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* Refactor notification handling: remove onLog prop and replace with showNotification in components ([2fca232](https://github.com/LinkeD365/Metadata-Browser/commit/2fca2328607e3bf1b004efd5956db55d80a55c97))
+
 ## [1.0.1](https://github.com/LinkeD365/Metadata-Browser/compare/1.0.0...1.0.1) (2026-10-31)
 
 
