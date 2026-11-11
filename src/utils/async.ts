@@ -34,7 +34,6 @@ export async function mapWithConcurrency<T, R>(
 export async function runReportedOperation(
   operation: () => Promise<void>,
   setBusy: (busy: boolean) => void,
-  onLog: (message: string, type: "error") => void,
   notify: (title: string, message: string, type: "error") => void | Promise<void>,
   failureMessage: string,
 ): Promise<boolean> {
@@ -43,7 +42,6 @@ export async function runReportedOperation(
     await operation();
     return true;
   } catch {
-    onLog(failureMessage, "error");
     await notify("Operation failed", failureMessage, "error");
     return false;
   } finally {

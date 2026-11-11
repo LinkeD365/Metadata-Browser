@@ -10,7 +10,7 @@ const primaryConnection: ToolBoxAPI.DataverseConnection = {
 
 function createService(
   queryData: DataverseAPI.API["queryData"],
-  onLog = vi.fn(),
+  onWarning = vi.fn<(message: string) => Promise<void>>().mockResolvedValue(undefined),
   fetchXmlQuery: DataverseAPI.API["fetchXmlQuery"] = async () => ({ value: [] }),
   connections: Array<ToolBoxAPI.DataverseConnection | null> = [primaryConnection],
 ) {
@@ -22,9 +22,9 @@ function createService(
     service: new dvService({
       connections,
       dvApi,
-      onLog,
+      onWarning,
     }),
-    onLog,
+    onWarning,
   };
 }
 
@@ -42,7 +42,7 @@ describe("dvService solution metadata", () => {
     let maximumActiveRequests = 0;
     const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
-    const { service } = createService(async (query) => {
+    const { service, onWarning } = createService(async (query) => {
       const objectId = query.match(/^EntityDefinitions\((.+)\)$/)?.[1];
       if (!objectId) {
         throw new Error("Unexpected query");
@@ -64,30 +64,30 @@ describe("dvService solution metadata", () => {
     expect(maximumActiveRequests).toBeGreaterThan(1);
     expect(tables.map((table) => table.tableName)).toEqual(objectIds.map((objectid) => `table_${objectid}`));
     expect(consoleLog).not.toHaveBeenCalled();
+    expect(onWarning).not.toHaveBeenCalled();
   });
 
-  it("escapes solution names and skips failed individual lookups without logging error details", async () => {
+  it("escapes solution names and notifies once about partial results without exposing error details", async () => {
     const fetchQueries: string[] = [];
-    const onLog = vi.fn();
+    const onWarning = vi.fn<(message: string) => Promise<void>>().mockResolvedValue(undefined);
     const { service } = createService(async (query) => {
       if (query === "EntityDefinitions(bad)") {
         throw new Error("Sensitive response detail");
       }
       return { value: [{ LogicalName: "good_table", MetadataId: "good" }] };
-    }, onLog, async (fetchXml) => {
+    }, onWarning, async (fetchXml) => {
       fetchQueries.push(fetchXml);
-      return { value: [{ objectid: "good" }, { objectid: "bad" }] };
+      return { value: [{ objectid: "good" }, { objectid: "bad" }, { objectid: null }] };
     });
 
     const tables = await service.getSolutionTables("publisher's solution");
 
     expect(fetchQueries[0]).toContain('value="publisher&apos;s solution"');
     expect(tables.map((table) => table.tableName)).toEqual(["good_table"]);
-    expect(onLog).toHaveBeenCalledWith(
-      "Failed to fetch metadata for a table in the selected solution.",
-      "warning",
+    expect(onWarning).toHaveBeenCalledExactlyOnceWith(
+      "Some tables in the selected solution could not be loaded. Results are incomplete; check access and reload the solution.",
     );
-    expect(onLog).not.toHaveBeenCalledWith(expect.stringContaining("Sensitive response detail"), expect.anything());
+    expect(JSON.stringify(onWarning.mock.calls)).not.toContain("Sensitive response detail");
   });
 
   it("rejects solution reads when the selected connection is unavailable", async () => {
@@ -98,18 +98,26 @@ describe("dvService solution metadata", () => {
     const service = new dvService({
       connections: [null],
       dvApi,
-      onLog: vi.fn(),
+      onWarning: vi.fn().mockResolvedValue(undefined),
     });
 
     await expect(service.getSolutionTables("solution")).rejects.toThrow("No connection available");
   });
 
   it("reports solution components that have no usable table identifier", async () => {
-    const { service, onLog } = createService(
+    const { service, onWarning } = createService(
       async () => ({ value: [] }), vi.fn(), async () => ({ value: [{ objectid: null }] }),
     );
     expect(await service.getSolutionTables("solution")).toEqual([]);
-    expect(onLog).toHaveBeenCalledWith("A solution component did not contain a usable table identifier.", "warning");
+    expect(onWarning).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("Results are incomplete"));
+  });
+
+  it("propagates a failed partial-result notification instead of silently returning incomplete results", async () => {
+    const onWarning = vi.fn().mockRejectedValue(new Error("Host unavailable"));
+    const { service } = createService(
+      async () => ({ value: [] }), onWarning, async () => ({ value: [{ objectid: null }] }),
+    );
+    await expect(service.getSolutionTables("solution")).rejects.toThrow("Host unavailable");
   });
 
   it("targets each of four connected environments by its numeric slot", async () => {

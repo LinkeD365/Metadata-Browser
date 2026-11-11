@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useConnection, useEventLog, useToolboxEvents } from "./hooks/useToolboxAPI";
+import { useConnection, useToolboxEvents } from "./hooks/useToolboxAPI";
 import { ViewModel } from "./model/ViewModel";
 import { dvService } from "./utils/dataverse";
 import { MetadataBrowser } from "./components/MetadataBrowser";
 import {
-  Accordion, AccordionHeader, AccordionItem, AccordionPanel, Button, FluentProvider,
+  FluentProvider,
   webDarkTheme, webLightTheme,
 } from "@fluentui/react-components";
 import {
@@ -12,15 +12,12 @@ import {
 } from "./utils/settings";
 
 function App() {
-  const { logs, addLog, clearLogs } = useEventLog();
   const reportError = useCallback(async (body: string) => {
-    addLog(body, "error");
-    try {
-      await window.toolboxAPI.utils.showNotification({ title: "Metadata Browser", body, type: "error" });
-    } catch {
-      addLog("The host could not display the error notification.", "error");
-    }
-  }, [addLog]);
+    await window.toolboxAPI.utils.showNotification({ title: "Metadata Browser", body, type: "error" });
+  }, []);
+  const reportWarning = useCallback(async (body: string) => {
+    await window.toolboxAPI.utils.showNotification({ title: "Metadata Browser", body, type: "warning" });
+  }, []);
   const connectionError = useCallback(
     () => reportError("Unable to refresh connections. Reconnect or reopen the tool to retry."),
     [reportError],
@@ -63,11 +60,6 @@ function App() {
     setViewModel(new ViewModel());
   }
   useToolboxEvents(handleEvent);
-
-  // Add initial log (run only once on mount)
-  useEffect(() => {
-    addLog("Metadata browser loaded", "success");
-  }, [addLog]);
 
   useEffect(() => {
     (async () => {
@@ -128,7 +120,6 @@ function App() {
         if (excelExport) {
           Object.assign(viewModel.excelOptions, excelExport);
         }
-        addLog("Loaded default relationship attributes", "info");
       } catch {
         await reportError("Unable to load saved display or export preferences. Review the preferences before exporting.");
       }
@@ -136,40 +127,24 @@ function App() {
 
     void loadDefaultSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewModel is a stable reference that doesn't need to trigger re-runs
-  }, [loadSetting, viewModel, addLog, reportError]);
+  }, [loadSetting, viewModel, reportError]);
   const dvSvc = useMemo(
     () =>
       new dvService({
         connections,
         dvApi: window.dataverseAPI,
-        onLog: addLog,
+        onWarning: reportWarning,
       }),
-    [connections, addLog],
+    [connections, reportWarning],
   );
   return (
     <>
       <FluentProvider theme={theme === "dark" ? webDarkTheme : webLightTheme} applyStylesToPortals={false}>
-        <Accordion collapsible>
-          <AccordionItem value="event-log">
-            <AccordionHeader>Event log ({logs.length})</AccordionHeader>
-            <AccordionPanel>
-              <Button onClick={clearLogs}>Clear event log</Button>
-              <ul aria-label="Metadata Browser event log">
-                {logs.map((log, index) => (
-                  <li key={index}>
-                    {log.timestamp.toLocaleTimeString()} - {log.type}: {log.message}
-                  </li>
-                ))}
-              </ul>
-            </AccordionPanel>
-          </AccordionItem>
-        </Accordion>
         <MetadataBrowser
           key={connections.map((connection) => connection ? `${connection.id}:${connection.url}` : "").join("|")}
           connections={connections}
           vm={viewModel}
           dvService={dvSvc}
-          onLog={addLog}
           isLoading={isLoading}
         />
       </FluentProvider>

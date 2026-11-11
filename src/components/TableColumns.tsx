@@ -42,12 +42,11 @@ interface TableColumnsProps {
   isLoading: boolean;
   viewModel: ViewModel;
   table: string;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
 export const TableColumns = observer((props: TableColumnsProps): React.JSX.Element => {
-  const { connections, dvService, onLog, viewModel, table, showNotification } = props;
+  const { connections, dvService, viewModel, table, showNotification } = props;
 
   const getDataTypeIcon = React.useCallback((dataType: string): React.JSX.Element => {
     const normalizedType = dataType.trim().toLowerCase();
@@ -153,12 +152,10 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         (column) => column.columnName,
         ["displayName"],
       );
-      onLog(`Loaded ${selectedTable.columns.length} columns for table: ${table}`, "success");
-    }, setLoadingMeta, onLog, showNotification, "Unable to load columns. Check the connections and permissions, then reopen this tab to retry.");
+    }, setLoadingMeta, showNotification, "Unable to load columns. Check the connections and permissions, then reopen this tab to retry.");
   }
 
   React.useEffect(() => {
-    onLog(`Loading columns for table: ${table}`, "info");
 
     if (selectedTable && selectedTable.columns?.length === 0) {
       getColumnsMeta();

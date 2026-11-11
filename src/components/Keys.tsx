@@ -22,16 +22,14 @@ interface KeysProps {
   dvService: dvService;
   isLoading: boolean;
   selectedTable: TableMeta;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
 export const Keys = observer((props: KeysProps): React.JSX.Element => {
-  const { connections, dvService, onLog, selectedTable, showNotification } = props;
+  const { connections, dvService, selectedTable, showNotification } = props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
   React.useEffect(() => {
-    onLog(`Loading keys for table: ${selectedTable.tableName}`, "info");
     if (selectedTable && selectedTable.keys?.length === 0) {
       getKeysMeta();
     }
@@ -56,8 +54,7 @@ export const Keys = observer((props: KeysProps): React.JSX.Element => {
         getKeyRowId,
         ["keyName"],
       );
-      onLog(`Loaded ${selectedTable.keys.length} keys for table: ${selectedTable.tableName}`, "success");
-    }, setLoadingMeta, onLog, showNotification, "Unable to load keys. Check the connections and permissions, then reopen this tab to retry.");
+    }, setLoadingMeta, showNotification, "Unable to load keys. Check the connections and permissions, then reopen this tab to retry.");
     return;
   }
 

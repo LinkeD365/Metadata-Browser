@@ -22,7 +22,6 @@ interface BusinessProcessFlowsProps {
   isLoading: boolean;
   selectedTable: TableMeta;
   businessProcessFlowAttributes: string[];
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
@@ -30,7 +29,6 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
   const {
     connections,
     dvService,
-    onLog,
     selectedTable,
     showNotification,
     businessProcessFlowAttributes,
@@ -49,7 +47,6 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
   }, [selectedTable.businessProcessFlowSearch, selectedTable.businessProcessFlows]);
 
   React.useEffect(() => {
-    onLog(`Loading business process flows for table: ${selectedTable.tableName}`, "info");
     if (selectedTable && selectedTable.businessProcessFlows?.length === 0) {
       getBusinessProcessFlows();
     }
@@ -74,11 +71,7 @@ export const BusinessProcessFlows = observer((props: BusinessProcessFlowsProps):
         (flow) => flow.flowName,
         ["flowName"],
       );
-      onLog(
-        `Loaded ${selectedTable.businessProcessFlows.length} business process flows for table: ${selectedTable.tableName}`,
-        "success",
-      );
-    }, setLoadingMeta, onLog, showNotification, "Unable to load business process flows. Check the connections and permissions, then reopen this tab to retry.");
+    }, setLoadingMeta, showNotification, "Unable to load business process flows. Check the connections and permissions, then reopen this tab to retry.");
   }
 
   const defaultColDefs = React.useMemo<ColDef<BusinessProcessFlowMeta>>(() => {

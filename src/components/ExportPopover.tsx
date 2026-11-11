@@ -25,11 +25,10 @@ interface ExportPopoverProps {
   vm: ViewModel;
   isExportOpen: boolean;
   setIsExportOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 
 export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Element => {
-  const { connection, dvSvc, vm, isExportOpen, setIsExportOpen, onLog } = props;
+  const { connection, dvSvc, vm, isExportOpen, setIsExportOpen } = props;
   const [blockClose, setBlockClose] = React.useState(false);
   const closeButtonLabel = "Close export settings";
   const exportButtonLabel = "Export selected metadata to Excel";
@@ -37,7 +36,6 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
 
   async function exportToExcel(): Promise<void> {
     if (!vm.selectedTables || vm.selectedTables.length == 0) {
-      onLog("No tables selected for export.", "warning");
       await window.toolboxAPI.utils.showNotification({
         title: "Metadata Browser",
         body: "No tables selected for export.",
@@ -48,7 +46,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
     const exported = await runReportedOperation(async () => {
       const excelExporter = new ExcelExport({ dvsvc: dvSvc, connection, vm });
       await excelExporter.export([...vm.selectedTables]);
-    }, setBlockClose, onLog, async (title, body, type) => {
+    }, setBlockClose, async (title, body, type) => {
       await window.toolboxAPI.utils.showNotification({ title, body, type });
     }, "Excel export failed. Earlier files may have downloaded; check them before retrying.");
     if (exported) {

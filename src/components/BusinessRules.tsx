@@ -22,12 +22,11 @@ interface BusinessRulesProps {
   isLoading: boolean;
   selectedTable: TableMeta;
   businessRuleAttributes: string[];
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   showNotification: (title: string, message: string, type: "info" | "success" | "warning" | "error") => void;
 }
 
 export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Element => {
-  const { connections, dvService, onLog, selectedTable, showNotification, businessRuleAttributes } =
+  const { connections, dvService, selectedTable, showNotification, businessRuleAttributes } =
     props;
   const [loadingMeta, setLoadingMeta] = React.useState(false);
 
@@ -43,7 +42,6 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
   }, [selectedTable.businessRuleSearch, selectedTable.businessRules]);
 
   React.useEffect(() => {
-    onLog(`Loading business rules for table: ${selectedTable.tableName}`, "info");
     if (selectedTable && selectedTable.businessRules?.length === 0) {
       getBusinessRules();
     }
@@ -68,11 +66,7 @@ export const BusinessRules = observer((props: BusinessRulesProps): React.JSX.Ele
         (rule) => rule.ruleName,
         ["ruleName"],
       );
-      onLog(
-        `Loaded ${selectedTable.businessRules.length} business rules for table: ${selectedTable.tableName}`,
-        "success",
-      );
-    }, setLoadingMeta, onLog, showNotification, "Unable to load business rules. Check the connections and permissions, then reopen this tab to retry.");
+    }, setLoadingMeta, showNotification, "Unable to load business rules. Check the connections and permissions, then reopen this tab to retry.");
   }
 
   const defaultColDefs = React.useMemo<ColDef<BusinessRuleMeta>>(() => {

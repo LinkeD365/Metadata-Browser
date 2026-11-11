@@ -61,11 +61,10 @@ interface MetadataBrowserProps {
   dvService: DataverseService;
   isLoading: boolean;
   vm: ViewModel;
-  onLog: (message: string, type?: "info" | "success" | "warning" | "error") => void;
 }
 
 export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX.Element => {
-  const { connections, dvService, onLog, vm } = props;
+  const { connections, dvService, vm } = props;
   const primaryConnection = connections[0] ?? null;
   const selectSolutionLabel = "Select a solution to load tables";
   const openTableSourceOptionsLabel = "Open table source options";
@@ -101,13 +100,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   const showNotification = useCallback(
     async (title: string, body: string, type: "success" | "info" | "warning" | "error") => {
-      try {
-        await window.toolboxAPI.utils.showNotification({ title, body, type, duration: 3000 });
-      } catch {
-        onLog("The host could not display a notification.", "error");
-      }
+      await window.toolboxAPI.utils.showNotification({ title, body, type, duration: 3000 });
     },
-    [onLog],
+    [],
   );
 
   const getMergedAllTables = useCallback(async (): Promise<TableMeta[]> => {
@@ -126,12 +121,11 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const openTableInConnectionBrowser = useCallback(
     async (table: TableMeta) => {
       if (!table.metaId) {
-        onLog(`Cannot open table ${table.tableName}: missing table metadata ID.`, "warning");
+        await showNotification("Cannot open table", "The table metadata ID is missing. Reload the table and retry.", "warning");
         return;
       }
       const connectionTarget = table.sourceConnectionIndex ?? 0;
       if (!connections[connectionTarget]) {
-        onLog("Cannot open table: its source environment is no longer connected.", "warning");
         await showNotification("No active connection", "Reconnect the table's source environment before opening it.", "warning");
         return;
       }
@@ -141,11 +135,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         const tableUrl = await dvService.getTableBrowserUrl(table.metaId, "", connectionTarget);
         await toolboxUtils.openInConnectionBrowser(tableUrl, connectionTarget);
       } catch {
-        onLog("Unable to open the table in its source environment.", "error");
         await showNotification("Browser navigation failed", "Check the connection and reopen the table.", "error");
       }
     },
-    [connections, dvService, onLog, showNotification],
+    [connections, dvService, showNotification],
   );
 
   const renderOpenTableButton = useCallback(
@@ -181,15 +174,13 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       void (async () => {
         try {
           vm.solutions = await dvService.getSolutions(managed, 0);
-          onLog(`Loaded ${vm.solutions.length} solutions from the primary connection.`, "success");
         } catch {
           vm.solutions = [];
-          onLog("Unable to load solutions from the primary connection.", "error");
           await showNotification("Error", "Unable to load solutions from the primary connection.", "error");
         }
       })();
     }
-  }, [dvService, isSolutionSelOpen, managed, onLog, showNotification, vm]);
+  }, [dvService, isSolutionSelOpen, managed, showNotification, vm]);
 
   async function getAllTableMeta() {
     vm.selectedSolution = undefined;
@@ -205,10 +196,9 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       const tables = vm.selectedSolution ? await getMergedSolutionTables() : await getMergedAllTables();
       if (request !== loadRequest.current) return;
       vm.tableMetadata = tables;
-      onLog(`Loaded ${tables.length} primary tables for comparison.`, "success");
     }, (busy) => {
       if (request === loadRequest.current) setLoadingMeta(busy);
-    }, onLog, showNotification, "Unable to load table metadata. Check connections and permissions, then select the source again to retry.");
+    }, showNotification, "Unable to load table metadata. Check connections and permissions, then select the source again to retry.");
   }
 
   const searchTables = async (_searchQuery: string) => {
@@ -257,7 +247,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       ...vm.tableAttributes.map((attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""),
     ]);
     await saveCsvFile("tables_metadata.csv", [headers, ...rows],
-      (name, content) => window.toolboxAPI.fileSystem.saveFile(name, content), onLog, showNotification);
+      (name, content) => window.toolboxAPI.fileSystem.saveFile(name, content), showNotification);
   }
 
   function saveTableColumnSelection(): void {
@@ -283,14 +273,14 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     }
   }
 
-  function saveSolutionSelection(): void {
+  async function saveSolutionSelection(): Promise<void> {
     setIsSolutionSelOpen(false);
     if (selectedSolutionIds.length === 0) {
-      onLog("No solution selected.", "warning");
+      await showNotification("No solution selected", "Please select a solution to load tables.", "warning");
       return;
     }
     vm.selectedSolution = vm.solutions.find((sol) => sol.solutionId === selectedSolutionIds[0].toString());
-    getTableMeta();
+    await getTableMeta();
   }
 
   const handleRowDoubleClick = React.useCallback(
@@ -301,11 +291,10 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
       const exists = vm.selectedTables.some((t) => t.tableName === item.tableName);
       if (!exists) {
         vm.selectedTables.push(item);
-        onLog(`Added "${item.primaryDisplayName}" to selected tables.`, "success");
       }
       setSelectedTab(item.tableName as TabValue);
     },
-    [vm, onLog],
+    [vm],
   );
 
   const closeTab = useCallback(
@@ -358,7 +347,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
         viewModel={vm}
         table={t.tableName}
         selectedTable={selectedTab as string}
-        onLog={onLog}
         showNotification={showNotification}
       />
       {/* Details component can be added here */}
@@ -624,7 +612,6 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
               vm={vm}
               isExportOpen={isExportPopoverOpen}
               setIsExportOpen={setIsExportPopoverOpen}
-              onLog={onLog}
             />
           )}
         </div>
