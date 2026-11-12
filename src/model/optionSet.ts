@@ -99,8 +99,10 @@ export class OptionSetDrawerModel {
       if (requestId === this.requestId) {
         runInAction(() => {
           this.details = details;
-          this.additionalFields = [...fields];
-          this.defaultsLoaded = true;
+          if (!this.defaultsLoaded) {
+            this.additionalFields = [...fields];
+            this.defaultsLoaded = true;
+          }
         });
       }
     } catch {
