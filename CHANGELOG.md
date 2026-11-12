@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/LinkeD365/Metadata-Browser/compare/1.0.2...1.1.0) (2026-11-12)
+
+
+### Features
+
+* add option set drawer for managing choice column options ([59e2b2a](https://github.com/LinkeD365/Metadata-Browser/commit/59e2b2ad2aff3045cc70396a9b983a992af58fe7))
+* add option set drawer for managing choice column options ([121cb0e](https://github.com/LinkeD365/Metadata-Browser/commit/121cb0ef280fbcccc93d0e6c14848bf2f467bd23))
+
 ## [1.0.2](https://github.com/LinkeD365/Metadata-Browser/compare/1.0.1...1.0.2) (2026-11-11)
 
 
