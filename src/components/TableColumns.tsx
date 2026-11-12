@@ -3,11 +3,12 @@ import { observer } from "mobx-react";
 import { ViewModel } from "../model/ViewModel";
 import { dvService } from "../utils/dataverse";
 import { TableMeta } from "../model/tableMeta";
-import { Spinner, TableRowId, Tooltip, tokens } from "@fluentui/react-components";
+import { Button, Spinner, TableRowId, Tooltip, tokens } from "@fluentui/react-components";
 import { ColDef, SelectionChangedEvent, RowSelectionOptions, RowStyleModule } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { runReportedOperation } from "../utils/async";
+import { parseOptionColumnDefaults } from "../utils/settings";
 import {
   createConnectionDisplayColumns,
   getConnectionDisplayLabel,
@@ -35,6 +36,8 @@ import {
 } from "@fluentui/react-icons";
 
 import { ColumnMeta } from "../model/columnMeta";
+import { OptionSetDrawerModel } from "../model/optionSet";
+import { OptionSetDrawer } from "./OptionSetDrawer";
 
 interface TableColumnsProps {
   connections: Array<ToolBoxAPI.DataverseConnection | null>;
@@ -47,6 +50,21 @@ interface TableColumnsProps {
 
 export const TableColumns = observer((props: TableColumnsProps): React.JSX.Element => {
   const { connections, dvService, viewModel, table, showNotification } = props;
+  const optionSetDrawer = React.useMemo(
+    () => new OptionSetDrawerModel(dvService, showNotification, {
+      load: async () => {
+        const value: unknown = await window.toolboxAPI.settings.get("defaultOptionColumns");
+        if (value === undefined || value === null) return [];
+        if (typeof value !== "string") throw new Error("Saved option columns must be JSON text");
+        return parseOptionColumnDefaults(value);
+      },
+      save: async (fields) => {
+        await window.toolboxAPI.settings.set("defaultOptionColumns", JSON.stringify(fields));
+      },
+    }),
+    [dvService, showNotification],
+  );
+  React.useEffect(() => () => optionSetDrawer.close(), [optionSetDrawer]);
 
   const getDataTypeIcon = React.useCallback((dataType: string): React.JSX.Element => {
     const normalizedType = dataType.trim().toLowerCase();
@@ -176,6 +194,34 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
   const colDefs = React.useMemo<ColDef<ColumnMeta>[]>(
     () => [
       {
+        headerName: "",
+        colId: "optionDetails",
+        width: 52,
+        flex: 0,
+        pinned: "left",
+        resizable: false,
+        suppressMovable: true,
+        sortable: false,
+        filter: false,
+        cellRenderer: (params: CustomCellRendererProps<ColumnMeta>) => {
+          const column = params.data;
+          return column?.optionSetType ? (
+            <Tooltip content={`View options for ${column.displayName || column.columnName}`} relationship="label">
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={<TextBulletListRegular />}
+                aria-label={`View options for ${column.displayName || column.columnName}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void optionSetDrawer.open(table, column);
+                }}
+              />
+            </Tooltip>
+          ) : null;
+        },
+      },
+      {
         headerName: getConnectionDisplayLabel(connections[0] ?? null, 0, "Column Name"),
         field: "displayName",
         sort: "asc",
@@ -219,7 +265,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
             }) as ColDef<ColumnMeta>,
         ),
     ],
-    [connections, getDataTypeIcon, viewModel.columnAttributes],
+    [connections, getDataTypeIcon, viewModel.columnAttributes, optionSetDrawer, table],
   );
 
   function colsSelected(event: SelectionChangedEvent<ColumnMeta>): void {
@@ -246,6 +292,7 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
         defaultColDef={defaultColDefs}
         domLayout="normal"
         rowSelection={rowSelection}
+        selectionColumnDef={{ pinned: "left" }}
         rowClassRules={rowClassRules}
         onSelectionChanged={colsSelected}
         getRowId={(params) => params.data?.columnName ?? ""}
@@ -261,6 +308,14 @@ export const TableColumns = observer((props: TableColumnsProps): React.JSX.Eleme
       ) : (
         <>{tableColumnGrid}</>
       )}
+      <OptionSetDrawer
+        model={optionSetDrawer}
+        environmentName={connections[optionSetDrawer.column?.sourceConnectionIndex ?? 0]?.name
+          || `Environment ${(optionSetDrawer.column?.sourceConnectionIndex ?? 0) + 1}`}
+        onRetry={() => {
+          if (optionSetDrawer.column) void optionSetDrawer.open(table, optionSetDrawer.column);
+        }}
+      />
     </>
   );
 });

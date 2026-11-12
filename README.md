@@ -16,8 +16,15 @@ This tool is a re-implementation of [Metadata Browser for XrmToolBox](https://gi
 - ✅ Added Views, BPFs and Business Rules
 - ✅ Search on Solutions and default sorting
 - ✅ Compare metadata across up to four Dataverse environments
+- ✅ Inspect local and global choice options from the columns list
 
 The solution picker and table list use the primary connection. Additional connections compare matching tables without adding tables or solutions to that selection.
+
+In a table's **Columns** tab, select the list icon immediately after a choice row's selection checkbox (tooltip: **View options**) to open the option-details drawer (including multi-select choices, Yes/No, State and Status). The checkbox and icon columns stay pinned at the left; the icon column has no visible header text. The drawer identifies local/global scope and the source environment and lists values, labels, descriptions, colors and state/status details where available. Shared columns use the primary environment; comparison-only columns use their first available environment. Loading errors include a **Retry** action.
+
+The drawer header reads **Field Name - x options**. Environment and Column appear together, with Name beside the local/global choice heading; the choice description is not shown. The grid initially shows only **Value** and **Label**; use **Choose visible option columns**, select extra fields, and choose **Apply** to add option descriptions, colors, state/status details or external values. **Save Defaults** applies and saves the selected extra columns for future option drawers and tool sessions, replacing the previous defaults. Save with no extra fields selected to restore Value and Label only. **Apply** alone keeps changes for the current Columns tab; closing the selector without applying discards pending changes.
+
+Use **Search Options** to filter by label, numeric value or description, even when Description is hidden. Text matching is case-insensitive; clearing the search restores all options. Search resets when opening or closing the drawer, and the header continues to show the total option count.
 
 This brings the original XrmToolBox workflow to PPTB and adds side-by-side comparison of metadata across up to four environments.
 
@@ -43,6 +50,8 @@ If loading fails, check the notification and the main Power Platform ToolBox hos
 If Excel export fails, controls become available again. Earlier workbooks may already have downloaded; check those files before retrying. Cancelling a CSV save dialog produces no success or error notification.
 
 ## Latest
+12/11/26 - Added an option-details drawer in the columns list for local/global choices, multi-select choices, Yes/No, State and Status, with on-demand reads and retry support. A list icon immediately after the selection checkbox opens the drawer; both columns stay pinned at the left, and the action column has no visible header text. Headers use Field Name - x options, without a choice description. The grid defaults to Value and Label, with other fields available through the column picker, saved column defaults and search across label, value and description. The column attribute selector uses smaller text and controls and the full available height above Add Custom Attribute.
+
 11/11/26 - Removed the tool's event log and logging callbacks; diagnostics rely on the main ToolBox host log. Kept error notifications and added host warnings for incomplete solution results and actions that previously reported only to the local log.
 
 31/10/26 - Added bounded metadata paging, per-environment comparison targeting, tenant-data protection, and four-environment comparison using current connection settings. Solution selection and the table-list baseline come from the primary connection. Updated the tool logo and screenshot. All comparison grids use field-title prefixes and configured environment names, such as `Table Name (Development)`. Added visible error logging, export failure recovery, safely quoted CSV exports, primary-only Excel workbooks, and a manual acceptance checklist.

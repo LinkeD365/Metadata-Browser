@@ -1,5 +1,6 @@
 import type { ColumnDefinition, ExcelOptions } from "../model/ViewModel";
 import type { RelationshipAttribute } from "../model/tableMeta";
+import type { AdditionalOptionField } from "../model/optionSet";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -11,6 +12,22 @@ export function parseStringArray(json: string): string[] {
     throw new Error("Saved attribute names must be an array of strings");
   }
   return value;
+}
+
+export function parseOptionColumnDefaults(json: string): AdditionalOptionField[] {
+  const fields = parseStringArray(json);
+  return fields.map((field) => {
+    switch (field) {
+      case "description":
+      case "color":
+      case "state":
+      case "defaultStatus":
+      case "externalValue":
+        return field;
+      default:
+        throw new Error("Saved option column is invalid");
+    }
+  }).filter((field, index, all) => all.indexOf(field) === index);
 }
 
 export function parseColumnDefinitions(json: string): ColumnDefinition[] {
