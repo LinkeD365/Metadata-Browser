@@ -1,4 +1,5 @@
 import { makeAutoObservable } from "mobx";
+import type { OptionSetAttributeType } from "./optionSet";
 
 export class ColumnMeta {
   columnName: string;
@@ -7,6 +8,8 @@ export class ColumnMeta {
   hasPrimaryConnection: boolean;
   hasSecondaryConnection: boolean;
   dataType: string;
+  optionSetType?: OptionSetAttributeType;
+  sourceConnectionIndex?: number;
 
   attributes: ColumnAttribute[] = [];
 

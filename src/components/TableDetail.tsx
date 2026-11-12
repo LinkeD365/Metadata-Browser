@@ -11,6 +11,7 @@ import {
   InputOnChangeData,
   List,
   ListItem,
+  makeStyles,
   OverlayDrawer,
   SearchBox,
   SearchBoxChangeEvent,
@@ -49,6 +50,11 @@ import { AgGridReact, CustomCellRendererProps } from "ag-grid-react";
 import { agGridTheme } from "../config/agGridConfig";
 import { saveCsvFile } from "../utils/csvExport";
 
+const useStyles = makeStyles({
+  compactColumnDrawer: { fontSize: tokens.fontSizeBase200, lineHeight: tokens.lineHeightBase200 },
+  compactDrawerTitle: { fontSize: tokens.fontSizeBase400, lineHeight: tokens.lineHeightBase400 },
+});
+
 interface TableDetailProps {
   connections: Array<ToolBoxAPI.DataverseConnection | null>;
   dvService: dvService;
@@ -60,6 +66,7 @@ interface TableDetailProps {
 }
 
 export const TableDetails = observer((props: TableDetailProps): React.JSX.Element => {
+  const styles = useStyles();
   const {
     connections,
     dvService,
@@ -221,6 +228,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           {renderButtonWithTooltip(
             `Remove custom attribute ${attr.name}`,
             <Button
+              size="small"
               appearance="subtle"
               aria-label={`Remove custom attribute ${attr.name}`}
               icon={<Dismiss24Regular />}
@@ -644,12 +652,19 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
   }
 
   const columnDrawer = (
-    <OverlayDrawer position="end" open={isColumnEditOpen} onOpenChange={(_, { open }) => setIsColumnEditOpen(open)}>
+    <OverlayDrawer
+      className={styles.compactColumnDrawer}
+      position="end"
+      open={isColumnEditOpen}
+      onOpenChange={(_, { open }) => setIsColumnEditOpen(open)}
+    >
       <DrawerHeader>
         <DrawerHeaderTitle
+          heading={{ className: styles.compactDrawerTitle }}
           action={renderButtonWithTooltip(
             "Close column attribute selector",
             <Button
+              size="small"
               appearance="subtle"
               aria-label="Close column attribute selector"
               icon={<Dismiss24Regular />}
@@ -663,7 +678,6 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
       <DrawerBody>
         <List
-          style={{ maxHeight: "200px", overflow: "auto" }}
           selectionMode="multiselect"
           selectedItems={selectedColumnAttributes}
           onSelectionChange={(_, data) => setSelectedColumnAttributes(data.selectedItems)}
@@ -675,13 +689,15 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
 
       <DrawerFooter style={{ display: "flex", flexDirection: "column", width: "100%" }}>
         <div style={{ minHeight: "150px", width: "100%" }}>
-          <Field label="Add Custom Attribute">
+          <Field label="Add Custom Attribute" size="small">
             <Input
+              size="small"
               value={customColName}
               onChange={(e) => setCustomColName(e.target.value)}
               contentAfter={renderButtonWithTooltip(
                 "Add custom column attribute",
                 <Button
+                  size="small"
                   appearance="subtle"
                   aria-label="Add custom column attribute"
                   icon={<Add12Filled />}
@@ -697,6 +713,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           {renderButtonWithTooltip(
             "Apply selected column attributes",
             <Button
+              size="small"
               style={{ marginLeft: "auto" }}
               appearance="primary"
               aria-label="Apply selected column attributes"
@@ -708,6 +725,7 @@ export const TableDetails = observer((props: TableDetailProps): React.JSX.Elemen
           {renderButtonWithTooltip(
             "Save selected column attributes as defaults",
             <Button
+              size="small"
               aria-label="Save selected column attributes as defaults"
               onClick={saveColumnAttributesDefaults}
               icon={<Save24Regular />}

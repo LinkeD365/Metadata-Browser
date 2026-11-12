@@ -1,4 +1,6 @@
 import { ColumnMeta } from "../model/columnMeta";
+import { getOptionSetAttributeType } from "../model/optionSet";
+import type { OptionDetails, OptionSetDetails } from "../model/optionSet";
 import { BusinessProcessFlowMeta } from "../model/businessProcessFlow";
 import { BusinessRuleMeta } from "../model/businessRule";
 import { Solution } from "../model/solution";
@@ -10,6 +12,37 @@ import { decodeFetchXmlPagingCookie, escapeXmlAttribute, fetchAllFetchXmlPages }
 import { fetchAllODataPages } from "./odataPagination";
 
 const MAX_CONCURRENT_SOLUTION_TABLE_REQUESTS = 5;
+
+interface MetadataLabel {
+  UserLocalizedLabel?: { Label?: string } | null;
+  LocalizedLabels?: Array<{ Label?: string }>;
+}
+
+interface OptionMetadata {
+  Value: number;
+  Label?: MetadataLabel;
+  Description?: MetadataLabel;
+  Color?: string | null;
+  State?: number | null;
+  DefaultStatus?: number | null;
+  ExternalValue?: string | null;
+}
+
+interface ColumnOptionSetResponse {
+  OptionSet?: {
+    Name?: string;
+    DisplayName?: MetadataLabel;
+    Description?: MetadataLabel;
+    IsGlobal?: boolean;
+    Options?: OptionMetadata[];
+    TrueOption?: OptionMetadata;
+    FalseOption?: OptionMetadata;
+  };
+}
+
+function getMetadataLabel(label?: MetadataLabel): string {
+  return label?.UserLocalizedLabel?.Label ?? label?.LocalizedLabels?.[0]?.Label ?? "";
+}
 
 function getSolutionComponentObjectId(component: Record<string, unknown>): string | undefined {
   const objectId = component.objectid;
@@ -207,6 +240,7 @@ export class dvService {
         columnMeta.columnName = attr.LogicalName;
         columnMeta.displayName = attr.DisplayName?.LocalizedLabels?.[0]?.Label || attr.LogicalName;
         columnMeta.dataType = attr.AttributeType || "";
+        columnMeta.optionSetType = getOptionSetAttributeType(attr.AttributeTypeName?.Value || columnMeta.dataType);
         columnMeta.attributes = [];
         Object.keys(attr).forEach((prop) => {
           const value = attr[prop];
@@ -229,6 +263,47 @@ export class dvService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async getColumnOptionSet(table: string, column: ColumnMeta, connectionTarget = 0): Promise<OptionSetDetails> {
+    if (!this.resolveConnection(connectionTarget)) {
+      throw new Error("No connection available");
+    }
+    if (!column.optionSetType) {
+      throw new Error("Column does not have option metadata");
+    }
+    const query = `EntityDefinitions(LogicalName='${table.replace(/'/g, "''")}')/Attributes(LogicalName='${column.columnName.replace(/'/g, "''")}')/Microsoft.Dynamics.CRM.${column.optionSetType}?$expand=OptionSet`;
+    const response = await this.queryData(query, connectionTarget) as ColumnOptionSetResponse;
+    const optionSet = response?.OptionSet;
+    if (!optionSet || typeof optionSet.IsGlobal !== "boolean") {
+      throw new Error("Option set metadata was not returned");
+    }
+    const options = column.optionSetType === "BooleanAttributeMetadata"
+      ? [optionSet.FalseOption, optionSet.TrueOption]
+      : optionSet.Options;
+    if (!options || options.some((option) => !option || !Number.isInteger(option.Value))) {
+      throw new Error("Option values were not returned");
+    }
+    return {
+      name: optionSet.Name ?? "",
+      displayName: getMetadataLabel(optionSet.DisplayName),
+      description: getMetadataLabel(optionSet.Description),
+      isGlobal: optionSet.IsGlobal,
+      options: options.map((option): OptionDetails => {
+        if (!option) {
+          throw new Error("Option metadata was not returned");
+        }
+        return {
+          value: option.Value,
+          label: getMetadataLabel(option.Label),
+          description: getMetadataLabel(option.Description),
+          color: option.Color,
+          state: option.State,
+          defaultStatus: option.DefaultStatus,
+          externalValue: option.ExternalValue,
+        };
+      }),
+    };
   }
 
   async getSolutions(managed: boolean, connectionTarget = 0): Promise<Solution[]> {

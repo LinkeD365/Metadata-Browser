@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  parseColumnDefinitions, parseExcelOptions, parseRelationshipAttributes, parseStringArray,
+  parseColumnDefinitions, parseExcelOptions, parseOptionColumnDefaults, parseRelationshipAttributes, parseStringArray,
 } from "../src/utils/settings";
 
 describe("saved preference validation", () => {
@@ -26,5 +26,14 @@ describe("saved preference validation", () => {
       .toThrow();
     expect(() => parseExcelOptions('{"includeColumns":"false"}')).toThrow();
     expect(() => parseExcelOptions("null")).toThrow();
+  });
+
+  it("validates optional choice column defaults, including an explicit reset", () => {
+    expect(parseOptionColumnDefaults('["description","color","state","defaultStatus","externalValue","color"]'))
+      .toEqual(["description", "color", "state", "defaultStatus", "externalValue"]);
+    expect(parseOptionColumnDefaults("[]")).toEqual([]);
+    for (const json of ["{", "{}", "[1]", '["unknown"]', '["label"]']) {
+      expect(() => parseOptionColumnDefaults(json)).toThrow();
+    }
   });
 });
