@@ -28,7 +28,6 @@ import {
   Spinner,
   SplitButton,
   Tab,
-  TableRowId,
   TabList,
   TabValue,
   tokens,
@@ -81,7 +80,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   const [selectedSolutionIds, setSelectedSolutionIds] = React.useState<SelectionItemId[]>([]);
   const [solutionQuery, setSolutionQuery] = React.useState<string>("");
   const [tableQuery, setTableQuery] = React.useState<string>("");
-  const [selectedTables, setSelectedTables] = React.useState<Set<TableRowId>>();
+  const [selectedTableRows, setSelectedTableRows] = React.useState<TableMeta[]>([]);
   const [isExportPopoverOpen, setIsExportPopoverOpen] = React.useState<boolean>(false);
   const loadRequest = React.useRef(0);
   React.useEffect(() => () => { loadRequest.current += 1; }, []);
@@ -191,7 +190,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
     const request = ++loadRequest.current;
     vm.tableMetadata = [];
     vm.selectedTables = [];
-    setSelectedTables(undefined);
+    setSelectedTableRows([]);
     setSelectedTab("tables");
     await runReportedOperation(async () => {
       const tables = vm.selectedSolution ? await getMergedSolutionTables() : await getMergedAllTables();
@@ -230,19 +229,16 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
   }
 
   async function exportTablesClick(): Promise<void> {
-    if (selectedTables === undefined || selectedTables.size === 0) {
+    if (selectedTableRows.length === 0) {
       await window.toolboxAPI.utils.showNotification({
         title: "No Tables Selected",
         body: "Please select one or more tables to export.",
       });
       return;
     }
-    const data = vm.tableMetadata.filter((t) =>
-      selectedTables ? selectedTables.has(t.tableName as TableRowId) : false,
-    );
 
     const headers = ["Table Name", "Logical Name", ...vm.tableAttributes.map((attr) => attr)];
-    const rows = data.map((table) => [
+    const rows = selectedTableRows.map((table) => [
       table.primaryDisplayName,
       table.tableName,
       ...vm.tableAttributes.map((attr) => table.attributes.find((a) => a.attributeName === attr)?.attributeValue || ""),
@@ -439,8 +435,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
 
   function tableSelected(event: SelectionChangedEvent<TableMeta>): void {
     const selectedRows = event.api.getSelectedRows();
-    const selectedIds = new Set<TableRowId>(selectedRows.map((row) => row.tableName as TableRowId));
-    setSelectedTables(selectedIds);
+    setSelectedTableRows(selectedRows);
   }
 
   const tableGrid = (
@@ -616,6 +611,7 @@ export const MetadataBrowser = observer((props: MetadataBrowserProps): React.JSX
               connection={primaryConnection}
               dvSvc={dvService}
               vm={vm}
+              tablesToExport={selectedTableRows}
               isExportOpen={isExportPopoverOpen}
               setIsExportOpen={setIsExportPopoverOpen}
             />
