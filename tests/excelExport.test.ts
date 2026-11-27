@@ -120,6 +120,33 @@ describe("ExcelExport", () => {
     expect(workbook.getWorksheet("Columns")?.getRow(2).getCell(4).type).toBe(ExcelJS.ValueType.String);
   });
 
+  it("exports the explicitly selected grid rows rather than open detail tabs", async () => {
+    const { blobs, service } = captureDownloads();
+    const vm = new ViewModel();
+    vm.excelOptions.includeColumns = false;
+    vm.excelOptions.includeKeys = false;
+    vm.excelOptions.includePrivileges = false;
+    vm.excelOptions.includeRelationships = false;
+    vm.excelOptions.includeSolutions = false;
+    vm.selectedTables = [
+      Object.assign(new TableMeta(), { tableName: "open_tab", primaryDisplayName: "Open tab" }),
+    ];
+    const selectedGridRows = [
+      Object.assign(new TableMeta(), { tableName: "account", primaryDisplayName: "Account" }),
+      Object.assign(new TableMeta(), { tableName: "contact", primaryDisplayName: "Contact" }),
+    ];
+
+    await new ExcelExport({ dvsvc: service, connection, vm }).export(selectedGridRows);
+
+    expect(blobs).toHaveLength(2);
+    const exportedTableNames = await Promise.all(blobs.map(async (blob) => {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await blob.arrayBuffer());
+      return workbook.getWorksheet("Table Details")?.getCell("B1").value;
+    }));
+    expect(exportedTableNames).toEqual(["account", "contact"]);
+  });
+
   it("continues to later relationship sheets when the first direction is empty", async () => {
     const { blobs, service } = captureDownloads();
     const vm = new ViewModel();

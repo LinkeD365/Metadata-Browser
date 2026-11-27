@@ -10,6 +10,7 @@ This tool is a re-implementation of [Metadata Browser for XrmToolBox](https://gi
 
 - ✅ Ability to select from solution or all tables
 - ✅ Select the details icon to create a new tab with tables details
+- ✅ Selecting table rows for export or bulk operations does not open detail tabs
 - ✅ Select attributes you want to display
 - ✅ Export to CSV
 - ✅ Export to Excel
@@ -50,6 +51,8 @@ If loading fails, check the notification and the main Power Platform ToolBox hos
 If Excel export fails, controls become available again. Earlier workbooks may already have downloaded; check those files before retrying. Cancelling a CSV save dialog produces no success or error notification.
 
 ## Latest
+27/11/26 - Separated table row selection from detail-tab selection, so selecting all or multiple rows does not open every table's details. Detail tabs open only through the details action or row double-click. Table search, solution, column and export controls remain visible beside a horizontally scrollable detail-tab row.
+
 12/11/26 - Added an option-details drawer in the columns list for local/global choices, multi-select choices, Yes/No, State and Status, with on-demand reads and retry support. A list icon immediately after the selection checkbox opens the drawer; both columns stay pinned at the left, and the action column has no visible header text. Headers use Field Name - x options, without a choice description. The grid defaults to Value and Label, with other fields available through the column picker, saved column defaults and search across label, value and description. The column attribute selector uses smaller text and controls and the full available height above Add Custom Attribute.
 
 11/11/26 - Removed the tool's event log and logging callbacks; diagnostics rely on the main ToolBox host log. Kept error notifications and added host warnings for incomplete solution results and actions that previously reported only to the local log.

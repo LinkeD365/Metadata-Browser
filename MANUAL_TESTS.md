@@ -32,6 +32,8 @@ For each item, tick only after checking its expected result. Record failures and
 - [x] **C05 - Empty baseline:** Select an empty solution or an environment with no matching tables. Show an understandable empty state without loading unrelated comparison-only tables.
 - [x] **C06 - Connection replacement during a read:** Start a slow metadata load, then change/remove a connection. Old detail tabs and selections are cleared; results from the previous selection do not repopulate the current table list or get exported as current data.
 - [ ] **C07 - Connection failure and retry:** Disconnect/expire the primary connection. A visible host notification explains the failure. Restore access and reload; loading indicators stop and the tool becomes usable.
+- [ ] **C08 - Bulk table selection:** Select one row, several rows and the select-all checkbox. No detail tabs open. The selected rows are available for table-list export and detail tabs open only from the details action or double-click.
+- [ ] **C09 - Tab overflow controls:** Open enough detail tabs to fill the tab bar. The tabs remain horizontally scrollable while Table Search, Select a Solution, column options and Export All remain visible and usable.
 
 ## Every comparison grid
 

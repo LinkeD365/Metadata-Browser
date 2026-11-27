@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { TableMeta } from "../src/model/tableMeta";
 import { dvService } from "../src/utils/dataverse";
+import { addTableDetailTab, removeTableDetailTab } from "../src/utils/tableDetailsSelection";
 
 function createService(connections: Array<ToolBoxAPI.DataverseConnection | null>) {
   const queryData = vi.fn<DataverseAPI.API["queryData"]>().mockResolvedValue({ value: [] });
@@ -107,5 +108,31 @@ describe("primary connection selection", () => {
     expect(result.map((solution) => solution.solutionName)).toEqual(["Primary solution"]);
     expect(queryData).toHaveBeenCalledOnce();
     expect(queryData).toHaveBeenCalledWith(expect.stringContaining("ismanaged eq false"), 0);
+  });
+});
+
+describe("table detail tab selection", () => {
+  it("does not infer detail tabs from a bulk grid selection", () => {
+    const detailTabs: TableMeta[] = [];
+    const selectedGridRows = [
+      table("account", "Account"),
+      table("contact", "Contact"),
+    ];
+
+    expect(detailTabs).toEqual([]);
+    expect(selectedGridRows).toHaveLength(2);
+  });
+
+  it("opens each table only once and closes a selected detail tab", () => {
+    const account = table("account", "Account");
+    const contact = table("contact", "Contact");
+    let detailTabs = addTableDetailTab([], account);
+
+    detailTabs = addTableDetailTab(detailTabs, account);
+    detailTabs = addTableDetailTab(detailTabs, contact);
+
+    expect(detailTabs.map((item) => item.tableName)).toEqual(["account", "contact"]);
+    detailTabs = removeTableDetailTab(detailTabs, "account");
+    expect(detailTabs.map((item) => item.tableName)).toEqual(["contact"]);
   });
 });

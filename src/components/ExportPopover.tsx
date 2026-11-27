@@ -18,24 +18,26 @@ import {
 import { ArrowExportUpRegular, Dismiss24Regular, Save16Filled } from "@fluentui/react-icons";
 import { ExcelExport } from "../utils/excelExport";
 import { runReportedOperation } from "../utils/async";
+import { TableMeta } from "../model/tableMeta";
 
 interface ExportPopoverProps {
   connection: ToolBoxAPI.DataverseConnection | null;
   dvSvc: dvService;
   vm: ViewModel;
+  tablesToExport: TableMeta[];
   isExportOpen: boolean;
   setIsExportOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Element => {
-  const { connection, dvSvc, vm, isExportOpen, setIsExportOpen } = props;
+  const { connection, dvSvc, vm, tablesToExport, isExportOpen, setIsExportOpen } = props;
   const [blockClose, setBlockClose] = React.useState(false);
   const closeButtonLabel = "Close export settings";
   const exportButtonLabel = "Export selected metadata to Excel";
   const saveSettingsButtonLabel = "Save export settings as default";
 
   async function exportToExcel(): Promise<void> {
-    if (!vm.selectedTables || vm.selectedTables.length == 0) {
+    if (tablesToExport.length === 0) {
       await window.toolboxAPI.utils.showNotification({
         title: "Metadata Browser",
         body: "No tables selected for export.",
@@ -45,7 +47,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
     }
     const exported = await runReportedOperation(async () => {
       const excelExporter = new ExcelExport({ dvsvc: dvSvc, connection, vm });
-      await excelExporter.export([...vm.selectedTables]);
+      await excelExporter.export([...tablesToExport]);
     }, setBlockClose, async (title, body, type) => {
       await window.toolboxAPI.utils.showNotification({ title, body, type });
     }, "Excel export failed. Earlier files may have downloaded; check them before retrying.");
@@ -104,7 +106,7 @@ export const ExportPopover = observer((props: ExportPopoverProps): React.JSX.Ele
             info={<>Ensure you select the appropriate columns in the tabs for export of columns and relationships. </>}
           >
             <Subtitle2>
-              Select one or more tabs to include in the export Excel file. Each selected table will be created as a
+              Select one or more table rows to include in the export Excel file. Each selected table will be created as a
               separate Workbook:
             </Subtitle2>
           </InfoLabel>
