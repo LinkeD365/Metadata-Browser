@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.1](https://github.com/LinkeD365/Metadata-Browser/compare/1.1.0...1.1.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* export selected grid tables to Excel ([9f84a4d](https://github.com/LinkeD365/Metadata-Browser/commit/9f84a4d9fe004d270bf2424e4d2047b9c634dcc8))
+* separate table row selection from detail tab opening and impleme… ([6f3a7a6](https://github.com/LinkeD365/Metadata-Browser/commit/6f3a7a6285f0f4a46f0c6f29ac7506cc4d26e465))
+* separate table row selection from detail tab opening and implement tab management functions ([65b63a6](https://github.com/LinkeD365/Metadata-Browser/commit/65b63a6ecc4a05ca21bc94a6ec6dd1a5c7498201))
+
 ## [1.1.0](https://github.com/LinkeD365/Metadata-Browser/compare/1.0.2...1.1.0) (2026-11-12)
 
 
